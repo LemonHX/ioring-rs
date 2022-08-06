@@ -55,8 +55,35 @@ pub struct SubmissionQueue<'a>{
 /// These can be created via the opcodes in [`opcode`](crate::opcode).
 #[repr(transparent)]
 #[derive(Clone)]
-pub struct Entry(pub(crate) sys::io_uring_sqe);
+pub struct Entry(pub(crate) crate::windows::_NT_IORING_SQE);
 
-bitflags!{
-    
+impl Inner{
+    pub(crate) unsafe fn new(
+        
+    ){
+        todo!()
+    }
 }
+
+/// An error pushing to the submission queue due to it being full.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct PushError;
+
+impl Display for PushError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str("submission queue is full")
+    }
+}
+
+impl Error for PushError {}
+
+// impl Debug for Entry {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+//         f.debug_struct("Entry")
+//             .field("op_code", &self.0.opcode)
+//             .field("flags", &self.0.flags)
+//             .field("user_data", &self.0.user_data)
+//             .finish()
+//     }
+// }
