@@ -1,3 +1,1 @@
-pub struct Inner{
-    
-}
+pub struct Inner {}

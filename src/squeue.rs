@@ -15,7 +15,7 @@ use bitflags::bitflags;
 ///     /* 0x0010 */ NT_IORING_SQE Entries[];
 /// } NT_IORING_SUBMISSION_QUEUE, * PNT_IORING_SUBMISSION_QUEUE; /* size: 0x0010 */
 
-pub(crate) struct Inner{
+pub(crate) struct Inner {
     pub(crate) head: *const atomic::AtomicU32,
     pub(crate) tail: *const atomic::AtomicU32,
     pub(crate) ring_mask: u32,
@@ -23,15 +23,14 @@ pub(crate) struct Inner{
     pub(crate) flags: *const atomic::AtomicU32,
     dropped: *const atomic::AtomicU32,
 
-    pub(crate) sqes: *mut  crate::windows::_NT_IORING_SQE ,
+    pub(crate) sqes: *mut crate::windows::_NT_IORING_SQE,
 }
 
-pub struct SubmissionQueue<'a>{
+pub struct SubmissionQueue<'a> {
     head: u32,
     tail: u32,
-    queue: &'a Inner
+    queue: &'a Inner,
 }
-
 
 // typedef struct _NT_IORING_SQE
 // {
@@ -48,8 +47,7 @@ pub struct SubmissionQueue<'a>{
 //         /* 0x0010 */ NT_IORING_OP_FLUSH Flush;
 //         /* 0x0010 */ NT_IORING_OP_RESERVED ReservedMaxSizePadding;
 //     }; /* size: 0x0030 */
-// } NT_IORING_SQE, * PNT_IORING_SQE; /* size: 0x0040 */    
-
+// } NT_IORING_SQE, * PNT_IORING_SQE; /* size: 0x0040 */
 /// An entry in the submission queue, representing a request for an I/O operation.
 ///
 /// These can be created via the opcodes in [`opcode`](crate::opcode).
@@ -57,10 +55,8 @@ pub struct SubmissionQueue<'a>{
 #[derive(Clone)]
 pub struct Entry(pub(crate) crate::windows::_NT_IORING_SQE);
 
-impl Inner{
-    pub(crate) unsafe fn new(
-        
-    ){
+impl Inner {
+    pub(crate) unsafe fn new() {
         todo!()
     }
 }
