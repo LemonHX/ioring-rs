@@ -18,8 +18,6 @@ pub struct IoRing {
     memory: ManuallyDrop<MemoryMap>,
 }
 
-
-
 #[allow(dead_code)]
 struct MemoryMap {
     sq_mmap: Mmap,
@@ -31,12 +29,12 @@ struct MemoryMap {
 #[derive(Clone, Default)]
 pub struct Builder {
     dontfork: bool,
-    info: windows::Win32::Storage::FileSystem:: IORING_INFO,
+    info: windows::Win32::Storage::FileSystem::IORING_INFO,
 }
 
 /// The Info that were used to construct an [`IoRing`].
 #[derive(Clone)]
-pub struct Info( windows::Win32::Storage::FileSystem::IORING_INFO);
+pub struct Info(windows::Win32::Storage::FileSystem::IORING_INFO);
 
 unsafe impl Send for IoRing {}
 unsafe impl Sync for IoRing {}
