@@ -8,13 +8,11 @@ version = "0.1.0"
 
 [dependencies.windows]
 features = [
-  "Data_Xml_Dom",
-  "Win32_Foundation",
-  "Win32_Security",
-  "Win32_System_Threading",
-  "Win32_UI_WindowsAndMessaging",
+  "Win32_Storage_FileSystem",
+  "Win32_Storage",
+  "Win32_Foundation"
 ]
-version = "0.39.0"
+git = "https://github.com/victoryang00/windows-rs"
 
 [dependencies]
 xmmap = {git = "https://github.com/LemonHX/xmmap"}

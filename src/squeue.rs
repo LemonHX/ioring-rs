@@ -23,7 +23,7 @@ pub(crate) struct Inner {
     pub(crate) flags: *const atomic::AtomicU32,
     dropped: *const atomic::AtomicU32,
 
-    pub(crate) sqes: *mut crate::windows::_NT_IORING_SQE,
+    pub(crate) sqes: *mut windows::Win32::Storage::FileSystem::IORING_SQE,
 }
 
 pub struct SubmissionQueue<'a> {
@@ -53,7 +53,7 @@ pub struct SubmissionQueue<'a> {
 /// These can be created via the opcodes in [`opcode`](crate::opcode).
 #[repr(transparent)]
 #[derive(Clone)]
-pub struct Entry(pub(crate) crate::windows::_NT_IORING_SQE);
+pub struct Entry(pub(crate) windows::Win32::Storage::FileSystem::IORING_SQE);
 
 impl Inner {
     pub(crate) unsafe fn new() {

@@ -5,7 +5,6 @@ mod opcode;
 mod register;
 mod submit;
 mod types;
-mod windows;
 use std::{
     mem::ManuallyDrop,
     os::windows::prelude::{AsRawHandle, RawHandle},
@@ -19,6 +18,8 @@ pub struct IoRing {
     memory: ManuallyDrop<MemoryMap>,
 }
 
+
+
 #[allow(dead_code)]
 struct MemoryMap {
     sq_mmap: Mmap,
@@ -30,12 +31,12 @@ struct MemoryMap {
 #[derive(Clone, Default)]
 pub struct Builder {
     dontfork: bool,
-    info: crate::windows::_NT_IORING_INFO,
+    info: windows::Win32::Storage::FileSystem:: IORING_INFO,
 }
 
 /// The Info that were used to construct an [`IoRing`].
 #[derive(Clone)]
-pub struct Info(crate::windows::_NT_IORING_INFO);
+pub struct Info( windows::Win32::Storage::FileSystem::IORING_INFO);
 
 unsafe impl Send for IoRing {}
 unsafe impl Sync for IoRing {}
@@ -57,12 +58,12 @@ impl IoRing {
     pub fn builder() -> Builder {
         Builder {
             dontfork: false,
-            info: crate::windows::_NT_IORING_INFO::default(),
+            info: windows::Win32::Storage::FileSystem::IORING_INFO::default(),
         }
     }
     fn with_params(
         entries: u32,
-        mut p: crate::windows::_NT_IORING_INFO,
+        mut p: windows::Win32::Storage::FileSystem::IORING_INFO,
     ) -> std::io::Result<IoRing> {
         p.SubmissionQueueSize = entries;
         p.CompletionQueueSize = entries * 2;
