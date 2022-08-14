@@ -1,8 +1,8 @@
 #[macro_use]
-mod squeue;
-mod cqueue;
-mod opcode;
-mod submit;
+pub mod squeue;
+pub mod cqueue;
+pub mod opcode;
+pub mod submit;
 
 use cqueue::CompletionQueue;
 use squeue::SubmissionQueue;

@@ -1,4 +1,4 @@
-use std::{io, os::windows::prelude::RawHandle, sync::atomic};
+use std::{io, mem, os::windows::prelude::RawHandle, sync::atomic};
 
 use windows::Win32::Storage::FileSystem::{
     SubmitIoRing, IORING_BUFFER_INFO, IORING_CREATE_FLAGS, IORING_OP_READ,
@@ -66,10 +66,18 @@ impl<'a> Submitter<'a> {
                 "No space left in sqe ring",
             ));
         }
-        let sqe = self.info.0.SubmissionQueue.Entries
-            [self.info.0.SubmissionQueue.Tail & self.info.0.SubmissionQueueSizeMask];
 
-        todo!()
+        let sqe = unsafe {
+            std::slice::from_raw_parts(
+                (*self.info.0.SubmissionQueue).Entries,
+                mem::size_of::<IORING_SQE>(),
+            )[((*self.info.0.SubmissionQueue).Tail
+                & self.info.0.SubmissionQueueSizeMask) as usize]
+        };
+        unsafe {
+            (*self.info.0.SubmissionQueue).Tail = (*self.info.0.SubmissionQueue).Tail + 1;
+        }
+        Ok(sqe)
     }
     /// Get the buffer space left in the sqe ring
     pub fn sq_space_left(&self) -> usize {
