@@ -4,4 +4,12 @@
 
 use std::{fmt, io, io::Write, mem, os::windows::prelude::RawHandle, sync::atomic};
 
+use windows::Win32::Storage::FileSystem::IORING_SQE;
+
 use crate::squeue::Entry;
+
+/// inline zeroed io improve codegen
+#[inline(always)]
+fn sqe_zeroed() -> IORING_SQE {
+    unsafe { mem::zeroed() }
+}

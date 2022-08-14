@@ -7,6 +7,8 @@ use windows::Win32::Storage::FileSystem::{
 
 use crate::Info;
 
+const BS: usize = 32 * 1024;
+
 pub struct Submitter<'a> {
     pub(crate) fd: &'a RawHandle,
     pub(crate) info: &'a Info,
@@ -57,27 +59,30 @@ impl<'a> Submitter<'a> {
         }
     }
     /// Get the sqe ring
-    pub fn get_sqe(&self) -> IORING_SQE {
+    pub fn get_sqe(&self) -> io::Result<IORING_SQE> {
+        if !self.sq_space_left() > 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "No space left in sqe ring",
+            ));
+        }
+        let sqe = self.info.0.SubmissionQueue.Entries
+            [self.info.0.SubmissionQueue.Tail & self.info.0.SubmissionQueueSizeMask];
+
         todo!()
+    }
+    /// Get the buffer space left in the sqe ring
+    pub fn sq_space_left(&self) -> usize {
+        return self.info.0.SubmissionQueueSize as usize - self.sq_len();
     }
 
     /// Register in-memory user buffers for I/O with the kernel. You can use these buffers with the
     /// [`ReadFixed`](crate::opcode::ReadFixed) and [`WriteFixed`](crate::opcode::WriteFixed)
     /// operations.
-    pub fn register_buffers(&self, bufs: &[IORING_BUFFER_INFO]) -> io::Result<()> {
+    pub fn register_buffers(&self, infd: &'a RawHandle, outfd: &'a RawHandle) -> io::Result<()> {
         let sqe = &self.get_sqe();
-        sqe = &IORING_SQE {
-            OpCode: todo!(),
-            Flags: todo!(),
-            UserData: todo!(),
-            CommonOpFlags: todo!(),
-            Padding: todo!(),
-            File: todo!(),
-            Buffer: todo!(),
-            Offset: todo!(),
-            Length: todo!(),
-            Key: todo!(),
-        };
+        let fds = [infd, outfd];
+
         Ok(())
     }
 

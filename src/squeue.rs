@@ -5,9 +5,6 @@ use std::sync::atomic;
 use std::{io, mem};
 
 use windows::Win32::Storage::FileSystem::{IORING_INFO, IORING_SQE, IORING_SQE_FLAGS};
-// use crate::sys;
-
-use bitflags::bitflags;
 
 pub(crate) struct Inner {
     pub(crate) head: *const atomic::AtomicU32,
