@@ -1,4 +1,4 @@
-use std::{fmt,mem,io::Write, io, os::windows::prelude::RawHandle, sync::atomic};
+use std::{fmt, io, io::Write, mem, os::windows::prelude::RawHandle, sync::atomic};
 
 use windows::Win32::Storage::FileSystem::{IORING_CQE, IORING_INFO};
 
@@ -24,7 +24,7 @@ pub struct Entry(pub(crate) IORING_CQE);
 
 impl Inner {
     pub(crate) unsafe fn new(p: &IORING_INFO) -> Self {
-        let head = p.CompletionQueue.as_mut().unwrap() . Head as *const atomic::AtomicU32;
+        let head = p.CompletionQueue.as_mut().unwrap().Head as *const atomic::AtomicU32;
         let tail = p.CompletionQueue.as_mut().unwrap().Tail as *const atomic::AtomicU32;
         let ring_mask = p.CompletionQueueSizeMask;
         let cqes = p.CompletionQueue.as_mut().unwrap().Entries as *const IORING_CQE;
@@ -68,8 +68,8 @@ impl CompletionQueue<'_> {
     /// Get the total number of entries in the completion queue ring buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
-        let view = (& self.queue.cqes )as *const _ as *const IORING_CQE;
-        let slice =unsafe {std::slice::from_raw_parts(view,mem::size_of::<IORING_CQE>())};
+        let view = (&self.queue.cqes) as *const _ as *const IORING_CQE;
+        let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<IORING_CQE>()) };
         slice.len() as usize
     }
 
@@ -157,7 +157,7 @@ impl Entry {
     /// [`Entry::user_data`](crate::squeue::Entry::user_data) on the submission queue event.
     #[inline]
     pub fn user_data(&self) -> usize {
-        self.0.UserData 
+        self.0.UserData
     }
 
     /// Metadata related to the operation.

@@ -1,7 +1,8 @@
 use std::{io, os::windows::prelude::RawHandle, sync::atomic};
 
 use windows::Win32::Storage::FileSystem::{
-    SubmitIoRing, IORING_CREATE_FLAGS, IORING_OP_READ, IORING_OP_REGISTER_BUFFERS, IORING_SQE, IORING_BUFFER_INFO,
+    SubmitIoRing, IORING_BUFFER_INFO, IORING_CREATE_FLAGS, IORING_OP_READ,
+    IORING_OP_REGISTER_BUFFERS, IORING_SQE,
 };
 
 use crate::Info;
