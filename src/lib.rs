@@ -2,23 +2,25 @@
 mod squeue;
 mod cqueue;
 mod opcode;
-mod register;
 mod submit;
-mod types;
+
+use cqueue::CompletionQueue;
+use squeue::SubmissionQueue;
 use std::{
     io,
     mem::ManuallyDrop,
     os::windows::prelude::{AsRawHandle, RawHandle},
 };
+use submit::Submitter;
 use windows::Win32::Storage::FileSystem::{
-    CreateIoRing, IORING_CREATE_ADVISORY_FLAGS, IORING_CREATE_ADVISORY_FLAGS_NONE,
+    CreateIoRing, HIORING__, IORING_CREATE_ADVISORY_FLAGS, IORING_CREATE_ADVISORY_FLAGS_NONE,
     IORING_CREATE_FLAGS, IORING_CREATE_REQUIRED_FLAGS_NONE, IORING_INFO, IORING_VERSION_3,
 };
-use xmmap::Mmap;
 pub struct IoRing {
     sq: squeue::Inner,
     cq: cqueue::Inner,
     info: Info,
+    handle: RawHandle,
 }
 
 /// IoRing build info
@@ -72,8 +74,8 @@ impl IoRing {
         };
         #[inline]
         unsafe fn setup_queue(p: &IORING_INFO) -> io::Result<(squeue::Inner, cqueue::Inner)> {
-            let sq = squeue::Inner::new(p)?;
-            let cq = cqueue::Inner::new(p)?;
+            let sq = squeue::Inner::new(p);
+            let cq = cqueue::Inner::new(p);
 
             Ok((sq, cq))
         }
@@ -83,6 +85,7 @@ impl IoRing {
             sq,
             cq,
             info: Info(p),
+            handle: res as _,
         })
     }
 
@@ -105,6 +108,16 @@ impl IoRing {
         self.submitter().submit_and_wait(want)
     }
 
+    #[inline]
+    pub fn submitter(&self) -> Submitter<'_> {
+        Submitter {
+            fd: &self.handle,
+            info: &self.info,
+            sq_head: self.sq.head,
+            sq_tail: self.sq.tail,
+            sq_flags: self.sq.flags,
+        }
+    }
     /// Get the submitter, submission queue and completion queue of the io_uring instance. This can
     /// be used to operate on the different parts of the io_uring instance independently.
     ///
@@ -114,8 +127,8 @@ impl IoRing {
     #[inline]
     pub fn split(&mut self) -> (Submitter<'_>, SubmissionQueue<'_>, CompletionQueue<'_>) {
         let submit = Submitter::new(
-            &self.fd,
-            &self.params,
+            &self.handle,
+            &self.info,
             self.sq.head,
             self.sq.tail,
             self.sq.flags,

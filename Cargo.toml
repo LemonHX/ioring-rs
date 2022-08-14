@@ -13,6 +13,7 @@ features = [
   "Win32_Foundation"
 ]
 git = "https://github.com/victoryang00/windows-rs"
+branch="master"
 
 [dependencies]
 xmmap = {git = "https://github.com/LemonHX/xmmap"}
