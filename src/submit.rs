@@ -1,9 +1,6 @@
-use std::{io, mem, os::windows::prelude::RawHandle, sync::atomic};
+use std::{io, os::windows::prelude::RawHandle, sync::atomic};
 
-use windows::Win32::Storage::FileSystem::{
-    SubmitIoRing, IORING_BUFFER_INFO, IORING_CREATE_FLAGS, IORING_OP_READ,
-    IORING_OP_REGISTER_BUFFERS, IORING_SQE,
-};
+use windows::Win32::Storage::FileSystem::{SubmitIoRing, IORING_SQE};
 
 use crate::Info;
 
@@ -68,28 +65,27 @@ impl<'a> Submitter<'a> {
         }
 
         let sqe = unsafe {
-            std::slice::from_raw_parts(
-                (*self.info.0.SubmissionQueue).Entries,
-                mem::size_of::<IORING_SQE>(),
-            )[((*self.info.0.SubmissionQueue).Tail
-                & self.info.0.SubmissionQueueSizeMask) as usize]
+            *(*self.info.0.SubmissionQueue).Entries.add(
+                ((*self.info.0.SubmissionQueue).Tail & self.info.0.SubmissionQueueSizeMask)
+                    as usize,
+            )
         };
         unsafe {
-            (*self.info.0.SubmissionQueue).Tail = (*self.info.0.SubmissionQueue).Tail + 1;
+            (*self.info.0.SubmissionQueue).Tail += 1;
         }
         Ok(sqe)
     }
     /// Get the buffer space left in the sqe ring
     pub fn sq_space_left(&self) -> usize {
-        return self.info.0.SubmissionQueueSize as usize - self.sq_len();
+        self.info.0.SubmissionQueueSize as usize - self.sq_len()
     }
 
     /// Register in-memory user buffers for I/O with the kernel. You can use these buffers with the
     /// [`ReadFixed`](crate::opcode::ReadFixed) and [`WriteFixed`](crate::opcode::WriteFixed)
     /// operations.
     pub fn register_buffers(&self, infd: &'a RawHandle, outfd: &'a RawHandle) -> io::Result<()> {
-        let sqe = &self.get_sqe();
-        let fds = [infd, outfd];
+        let _sqe = &self.get_sqe();
+        let _fds = [infd, outfd];
 
         Ok(())
     }
@@ -102,7 +98,7 @@ impl<'a> Submitter<'a> {
     ///
     /// Note that this will wait for the ring to idle; it will only return once all active requests
     /// are complete. Use [`register_files_update`](Self::register_files_update) to avoid this.
-    pub fn register_files(&self, fds: &[RawHandle]) -> io::Result<()> {
+    pub fn register_files(&self, _fds: &[RawHandle]) -> io::Result<()> {
         Ok(())
     }
 }

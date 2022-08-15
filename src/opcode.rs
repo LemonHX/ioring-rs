@@ -2,11 +2,9 @@
 
 #![allow(clippy::new_without_default)]
 
-use std::{fmt, io, io::Write, mem, os::windows::prelude::RawHandle, sync::atomic};
+use std::mem;
 
 use windows::Win32::Storage::FileSystem::IORING_SQE;
-
-use crate::squeue::Entry;
 
 /// inline zeroed io improve codegen
 #[inline(always)]

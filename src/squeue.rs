@@ -1,8 +1,7 @@
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
-use std::os::windows::prelude::RawHandle;
+
 use std::sync::atomic;
-use std::{io, mem};
 
 use windows::Win32::Storage::FileSystem::{IORING_INFO, IORING_SQE, IORING_SQE_FLAGS};
 
@@ -91,9 +90,10 @@ impl SubmissionQueue<'_> {
     /// Get the total number of entries in the submission queue ring buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
-        let view = (&self.queue.sqes) as *const _ as *const IORING_SQE;
-        let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<IORING_SQE>()) };
-        slice.len() as usize
+        // let view = (&self.queue.sqes) as *const _ as *const IORING_SQE;
+        // let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<IORING_SQE>()) };
+        // slice.len() as usize
+        todo!()
     }
 
     /// Get the number of submission queue events in the ring buffer.

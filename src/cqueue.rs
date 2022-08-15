@@ -1,4 +1,4 @@
-use std::{fmt, io, io::Write, mem, os::windows::prelude::RawHandle, sync::atomic};
+use std::{fmt, sync::atomic};
 
 use windows::Win32::Storage::FileSystem::{IORING_CQE, IORING_INFO};
 
@@ -8,6 +8,7 @@ pub(crate) struct Inner {
     ring_mask: u32,
 
     cqes: *const IORING_CQE,
+    info: *const IORING_INFO,
 }
 
 /// An io_uring instance's completion queue. This stores all the I/O operations that have completed.
@@ -15,6 +16,7 @@ pub struct CompletionQueue<'a> {
     head: u32,
     tail: u32,
     queue: &'a Inner,
+    info: &'a IORING_INFO,
 }
 
 /// An entry in the completion queue, representing a complete I/O operation.
@@ -28,12 +30,13 @@ impl Inner {
         let tail = p.CompletionQueue.as_mut().unwrap().Tail as *const atomic::AtomicU32;
         let ring_mask = p.CompletionQueueSizeMask;
         let cqes = p.CompletionQueue.as_mut().unwrap().Entries as *const IORING_CQE;
-
+        let info = p;
         Self {
             head,
             tail,
             ring_mask,
             cqes,
+            info,
         }
     }
 
@@ -43,6 +46,7 @@ impl Inner {
             head: *self.head.cast::<u32>(),
             tail: (*self.tail).load(atomic::Ordering::Acquire),
             queue: self,
+            info: &*self.info,
         }
     }
 
@@ -68,9 +72,10 @@ impl CompletionQueue<'_> {
     /// Get the total number of entries in the completion queue ring buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
-        let view = (&self.queue.cqes) as *const _ as *const IORING_CQE;
-        let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<IORING_CQE>()) };
-        slice.len() as usize
+        // let view = (&self.queue.cqes) as *const _ as *const IORING_CQE;
+        // let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<IORING_CQE>()) };
+        // slice.len() as usize
+        todo!()
     }
 
     /// Returns `true` if there are no completion queue events to be processed.

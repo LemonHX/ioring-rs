@@ -6,15 +6,11 @@ pub mod submit;
 
 use cqueue::CompletionQueue;
 use squeue::SubmissionQueue;
-use std::{
-    io,
-    mem::ManuallyDrop,
-    os::windows::prelude::{AsRawHandle, RawHandle},
-};
+use std::{io, os::windows::prelude::RawHandle};
 use submit::Submitter;
 use windows::Win32::Storage::FileSystem::{
-    CreateIoRing, HIORING__, IORING_CREATE_ADVISORY_FLAGS, IORING_CREATE_ADVISORY_FLAGS_NONE,
-    IORING_CREATE_FLAGS, IORING_CREATE_REQUIRED_FLAGS_NONE, IORING_INFO, IORING_VERSION_3,
+    CreateIoRing, IORING_CREATE_ADVISORY_FLAGS_NONE, IORING_CREATE_FLAGS,
+    IORING_CREATE_REQUIRED_FLAGS_NONE, IORING_INFO, IORING_VERSION_3,
 };
 pub struct IoRing {
     sq: squeue::Inner,
