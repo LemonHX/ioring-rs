@@ -2,11 +2,12 @@
 
 #![allow(clippy::new_without_default)]
 
-use std::mem;
+use std::{mem, os::windows::prelude::RawHandle};
 
 use crate::squeue::Entry;
 use windows::Win32::Storage::FileSystem::{
-    IORING_HANDLE_REF, IORING_OP_CODE, IORING_OP_NOP, IORING_OP_READ, IORING_SQE,
+    IORING_BUFFER_REF, IORING_HANDLE_REF, IORING_OP_CODE, IORING_OP_FLAGS, IORING_OP_NOP,
+    IORING_OP_READ, IORING_OP_REGISTER_FILES, IORING_REG_FILES_FLAGS, IORING_SQE,
 };
 /// inline zeroed io improve codegen
 #[inline(always)]
@@ -103,21 +104,64 @@ opcode!(
     /// This is useful for testing the performance of the io_uring implementation itself.
     #[derive(Debug)]
     pub struct Read {
-         file:IORING_HANDLE_REF,
-       buffer:IORING_BUFFER_REF,
-  sizeToRead:u32,
-     fileOffset:u32,
-     commonOpFlags:IORING_OP_FLAGS
+        file:{IORING_HANDLE_REF},
+        buffer:{IORING_BUFFER_REF},
+        sizeToRead:{u32},
+        fileOffset:{u64},
+        commonOpFlags:{IORING_OP_FLAGS}
+     ;;
      }
 
     pub const CODE = IORING_OP_READ;
 
     pub fn build(self) -> Entry {
-        let Read {} = self;
+        let Read {
+            file,
+            buffer,
+            sizeToRead,
+            fileOffset,
+            commonOpFlags,
+        } = self;
 
         let mut sqe = sqe_zeroed();
         sqe.OpCode = IORING_OP_CODE ( Self::CODE);
-        sqe.CommonOpFlags = ;
+        sqe.Op.Read. CommonOpFlags = commonOpFlags;
+        sqe.Op.Read.File =file;
+        sqe.Op.Read.Buffer =buffer;
+        sqe.Op.Read.Offset = fileOffset;
+        sqe.Op.Read.Length =sizeToRead;
+        Entry(sqe)
+    }
+);
+
+opcode!(
+    /// This command is an alternative to using
+    /// [`Submitter::register_files_update`](crate::Submitter::register_files_update) which then
+    /// works in an async fashion, like the rest of the io_uring commands.
+    pub struct RegisterFiles {
+        handles :{ *mut RawHandle},
+        count:{u32},
+        flags:{IORING_REG_FILES_FLAGS},
+        commonOpFlags:{IORING_OP_FLAGS}
+     ;;
+    }
+
+    pub const CODE = IORING_OP_REGISTER_FILES;
+
+    pub fn build(self) -> Entry {
+        let RegisterFiles {
+            handles,
+            count,
+            flags,
+            commonOpFlags,
+         } = self;
+
+        let mut sqe = sqe_zeroed();
+        sqe.OpCode = IORING_OP_CODE ( Self::CODE);
+        sqe.Op.RegisterFiles.Files = handles as * mut _;
+        sqe.Op.RegisterFiles.CommonOpFlags =commonOpFlags;
+        sqe.Op.RegisterFiles.Count = count;
+        sqe.Op.RegisterFiles.Flags = flags;
         Entry(sqe)
     }
 );
