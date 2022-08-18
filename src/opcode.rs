@@ -6,7 +6,7 @@ use std::{mem, os::windows::prelude::RawHandle};
 
 use crate::squeue::Entry;
 use windows::Win32::Storage::FileSystem::{
-    IORING_BUFFER_REF, IORING_HANDLE_REF, IORING_OP_CODE, IORING_OP_FLAGS, IORING_OP_NOP,
+    IORING_BUFFER_REF_0, IORING_HANDLE_REF_0, IORING_OP_CODE, IORING_OP_FLAGS, IORING_OP_NOP,
     IORING_OP_READ, IORING_OP_REGISTER_FILES, IORING_REG_FILES_FLAGS, IORING_SQE,
 };
 /// inline zeroed io improve codegen
@@ -104,11 +104,11 @@ opcode!(
     /// This is useful for testing the performance of the io_uring implementation itself.
     #[derive(Debug)]
     pub struct Read {
-        file:{IORING_HANDLE_REF},
-        buffer:{IORING_BUFFER_REF},
-        sizeToRead:{u32},
-        fileOffset:{u64},
-        commonOpFlags:{IORING_OP_FLAGS}
+        file:{IORING_HANDLE_REF_0},
+        buffer:{IORING_BUFFER_REF_0},
+        size_to_read:{u32},
+        file_offset:{u64},
+        common_op_flags:{IORING_OP_FLAGS}
      ;;
      }
 
@@ -118,18 +118,18 @@ opcode!(
         let Read {
             file,
             buffer,
-            sizeToRead,
-            fileOffset,
-            commonOpFlags,
+            size_to_read,
+            file_offset,
+            common_op_flags,
         } = self;
 
         let mut sqe = sqe_zeroed();
         sqe.OpCode = IORING_OP_CODE ( Self::CODE);
-        sqe.Op.Read. CommonOpFlags = commonOpFlags;
+        sqe.Op.Read. CommonOpFlags = common_op_flags;
         sqe.Op.Read.File =file;
         sqe.Op.Read.Buffer =buffer;
-        sqe.Op.Read.Offset = fileOffset;
-        sqe.Op.Read.Length =sizeToRead;
+        sqe.Op.Read.Offset = file_offset;
+        sqe.Op.Read.Length =size_to_read;
         Entry(sqe)
     }
 );
@@ -142,7 +142,7 @@ opcode!(
         handles :{ *mut RawHandle},
         count:{u32},
         flags:{IORING_REG_FILES_FLAGS},
-        commonOpFlags:{IORING_OP_FLAGS}
+        common_op_flags:{IORING_OP_FLAGS}
      ;;
     }
 
@@ -153,13 +153,13 @@ opcode!(
             handles,
             count,
             flags,
-            commonOpFlags,
+            common_op_flags,
          } = self;
 
         let mut sqe = sqe_zeroed();
         sqe.OpCode = IORING_OP_CODE ( Self::CODE);
         sqe.Op.RegisterFiles.Files = handles as * mut _;
-        sqe.Op.RegisterFiles.CommonOpFlags =commonOpFlags;
+        sqe.Op.RegisterFiles.CommonOpFlags =common_op_flags;
         sqe.Op.RegisterFiles.Count = count;
         sqe.Op.RegisterFiles.Flags = flags;
         Entry(sqe)
