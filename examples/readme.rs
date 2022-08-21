@@ -1,5 +1,6 @@
 use ioring_rs::windows::{
-    _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_REGISTERED_FILE, _NT_IORING_BUFFERREF, _NT_IORING_HANDLEREF,
+    _NT_IORING_BUFFERREF, _NT_IORING_HANDLEREF,
+    _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_REGISTERED_FILE,
 };
 use ioring_rs::{opcode, IoRing};
 use std::{fs, io, os::windows::prelude::AsRawHandle};
@@ -31,12 +32,12 @@ fn main() -> io::Result<()> {
             .expect("submission queue is full");
     }
 
-    ring.submit_and_wait(1)?;
+    ring.submit_and_wait(10000)?;
 
     let cqe = ring.completion().next().expect("completion queue is empty");
 
     assert_eq!(cqe.user_data(), 0x42);
-    // assert!(cqe.result() >= 0, "read error: {}", cqe.result());
+    assert!(cqe.result() >= 0, "read error: {}", cqe.result());
 
     Ok(())
 }

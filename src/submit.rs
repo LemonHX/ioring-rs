@@ -1,3 +1,4 @@
+#![allow(clippy::uninit_assumed_init)]
 use std::{io, mem::MaybeUninit, os::windows::prelude::RawHandle, sync::atomic};
 
 use crate::{
@@ -15,7 +16,7 @@ pub struct Submitter<'a> {
     pub(crate) info: &'a Info,
     pub(crate) sq_head: *const atomic::AtomicU32,
     pub(crate) sq_tail: *const atomic::AtomicU32,
-    pub(crate) sq_flags: *const atomic::AtomicU32,
+    pub(crate) sq_flags: *const atomic::AtomicI32,
 }
 
 impl<'a> Submitter<'a> {
@@ -24,7 +25,7 @@ impl<'a> Submitter<'a> {
         info: &'a Info,
         sq_head: *const atomic::AtomicU32,
         sq_tail: *const atomic::AtomicU32,
-        sq_flags: *const atomic::AtomicU32,
+        sq_flags: *const atomic::AtomicI32,
     ) -> Submitter<'a> {
         Submitter {
             fd,

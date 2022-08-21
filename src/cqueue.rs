@@ -1,14 +1,10 @@
 use std::{fmt, sync::atomic};
 
-use crate::windows::{_NT_IORING_CQE, _NT_IORING_INFO};
+use crate::windows::{_NT_IORING_COMPLETION_QUEUE, _NT_IORING_CQE, _NT_IORING_INFO};
 
 pub(crate) struct Inner {
-    head: *const atomic::AtomicU32,
-    tail: *const atomic::AtomicU32,
     ring_mask: u32,
-
-    cqes: *const _NT_IORING_CQE,
-    info: *const _NT_IORING_INFO,
+    cqes: *const _NT_IORING_COMPLETION_QUEUE,
 }
 
 /// An io_uring instance's completion queue. This stores all the I/O operations that have completed.
@@ -16,7 +12,6 @@ pub struct CompletionQueue<'a> {
     head: u32,
     tail: u32,
     queue: &'a Inner,
-    info: &'a _NT_IORING_INFO,
 }
 
 /// An entry in the completion queue, representing a complete I/O operation.
@@ -26,27 +21,23 @@ pub struct Entry(pub(crate) _NT_IORING_CQE);
 
 impl Inner {
     pub(crate) unsafe fn new(p: &_NT_IORING_INFO) -> Self {
-        let head = p.__bindgen_anon_2.CompletionQueue.as_mut().unwrap().Head as *const atomic::AtomicU32;
-        let tail = p.__bindgen_anon_2.CompletionQueue.as_mut().unwrap().Tail as *const atomic::AtomicU32;
+        let head = Box::new(atomic::AtomicU32::new(
+            p.__bindgen_anon_2.CompletionQueue.as_ref().unwrap().Head,
+        ));
+        let tail = Box::new(atomic::AtomicU32::new(
+            p.__bindgen_anon_2.CompletionQueue.as_ref().unwrap().Tail,
+        ));
         let ring_mask = p.CompletionQueueRingMask;
-        let cqes = p.__bindgen_anon_2.CompletionQueue.as_mut().unwrap().Entries.as_mut_ptr() as *const _NT_IORING_CQE;
-        let info = p;
-        Self {
-            head,
-            tail,
-            ring_mask,
-            cqes,
-            info,
-        }
+        let cqes = p.__bindgen_anon_2.CompletionQueue;
+        Self { ring_mask, cqes }
     }
 
     #[inline]
     pub(crate) unsafe fn borrow_shared(&self) -> CompletionQueue<'_> {
         CompletionQueue {
-            head: *self.head.cast::<u32>(),
-            tail: (*self.tail).load(atomic::Ordering::Acquire),
+            head: self.cqes.as_ref().unwrap().Head,
+            tail: self.cqes.as_ref().unwrap().Tail,
             queue: self,
-            info: &*self.info,
         }
     }
 
@@ -64,18 +55,18 @@ impl CompletionQueue<'_> {
     #[inline]
     pub fn sync(&mut self) {
         unsafe {
-            (*self.queue.head).store(self.head, atomic::Ordering::Release);
-            self.tail = (*self.queue.tail).load(atomic::Ordering::Acquire);
+            self.head = self.queue.cqes.as_ref().unwrap().Head;
+            self.tail = self.queue.cqes.as_ref().unwrap().Tail;
         }
     }
 
     /// Get the total number of entries in the completion queue ring buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
-        // let view = (&self.queue.cqes) as *const _ as *const _NT_IORING_CQE;
-        // let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<_NT_IORING_CQE>()) };
-        // slice.len() as usize
-        todo!()
+        let view = (&self.queue.cqes) as *const _ as *const _NT_IORING_CQE;
+        let slice =
+            unsafe { std::slice::from_raw_parts(view, std::mem::size_of::<_NT_IORING_CQE>()) };
+        slice.len() as usize
     }
 
     /// Returns `true` if there are no completion queue events to be processed.
@@ -114,7 +105,9 @@ impl CompletionQueue<'_> {
 impl Drop for CompletionQueue<'_> {
     #[inline]
     fn drop(&mut self) {
-        unsafe { &*self.queue.head }.store(self.head, atomic::Ordering::Release);
+        unsafe {
+            self.queue.cqes.as_ref().unwrap();
+        }
     }
 }
 
@@ -123,6 +116,7 @@ impl Iterator for CompletionQueue<'_> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
+        self.sync();
         if self.head != self.tail {
             let entry = unsafe {
                 *self
@@ -151,6 +145,12 @@ impl ExactSizeIterator for CompletionQueue<'_> {
 }
 
 impl Entry {
+    /// The operation-specific result code. For example, for a [`Read`](crate::opcode::Read)
+    /// operation this is equivalent to the return value of the `read(2)` system call.
+    #[inline]
+    pub fn result(&self) -> i32 {
+        unsafe { self.0.__bindgen_anon_1.ResultCode as _ }
+    }
     /// The user data of the request, as set by
     /// [`Entry::user_data`](crate::squeue::Entry::user_data) on the submission queue event.
     #[inline]
@@ -177,4 +177,3 @@ impl fmt::Debug for Entry {
             .finish()
     }
 }
-

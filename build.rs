@@ -1,3 +1,3 @@
-fn main(){
+fn main() {
     println!("cargo:rustc-link-lib=dylib=ntdll");
 }

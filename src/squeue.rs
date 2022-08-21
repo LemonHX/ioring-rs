@@ -6,10 +6,10 @@ use std::sync::atomic;
 use crate::windows::{_NT_IORING_INFO, _NT_IORING_SQE, _NT_IORING_SQE_FLAGS};
 
 pub(crate) struct Inner {
-    pub(crate) head: *const atomic::AtomicU32,
-    pub(crate) tail: *const atomic::AtomicU32,
+    pub(crate) head: Box<atomic::AtomicU32>,
+    pub(crate) tail: Box<atomic::AtomicU32>,
     pub(crate) ring_mask: u32,
-    pub(crate) flags: *const atomic::AtomicU32,
+    pub(crate) flags: Box<atomic::AtomicI32>,
     pub(crate) sqes: *mut _NT_IORING_SQE,
 }
 
@@ -40,15 +40,24 @@ impl Display for PushError {
 impl Error for PushError {}
 
 impl Inner {
-    #[rustfmt::skip]
-    pub(crate) unsafe fn new(
-        p: &_NT_IORING_INFO,
-    ) -> Self {
-        let head = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Head as *const atomic::AtomicU32;
-        let tail = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Tail as *const atomic::AtomicU32;
-        let flags = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Flags as *const atomic::AtomicU32;
+    pub(crate) unsafe fn new(p: &_NT_IORING_INFO) -> Self {
+        let head = Box::new(atomic::AtomicU32::new(
+            p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Head,
+        ));
+        let tail = Box::new(atomic::AtomicU32::new(
+            p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Tail,
+        ));
+        let flags = Box::new(atomic::AtomicI32::new(
+            p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Flags,
+        ));
         let ring_mask = p.SubmissionQueueRingMask;
-        let sqes = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Entries.as_mut_ptr() as *mut _NT_IORING_SQE;
+        let sqes = p
+            .__bindgen_anon_1
+            .SubmissionQueue
+            .as_mut()
+            .unwrap()
+            .Entries
+            .as_mut_ptr() as *mut _NT_IORING_SQE;
         Self {
             head,
             tail,
@@ -90,10 +99,10 @@ impl SubmissionQueue<'_> {
     /// Get the total number of entries in the submission queue ring buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
-        // let view = (&self.queue.sqes) as *const _ as *const IORING_SQE;
-        // let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<IORING_SQE>()) };
-        // slice.len() as usize
-        todo!()
+        let view = (&self.queue.sqes) as *const _ as *const _NT_IORING_SQE;
+        let slice =
+            unsafe { std::slice::from_raw_parts(view, std::mem::size_of::<_NT_IORING_SQE>()) };
+        slice.len() as usize
     }
 
     /// Get the number of submission queue events in the ring buffer.

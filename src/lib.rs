@@ -1,3 +1,4 @@
+#![allow(clippy::uninit_assumed_init)]
 #[macro_use]
 pub mod squeue;
 pub mod cqueue;
@@ -7,12 +8,15 @@ pub mod windows;
 
 use cqueue::CompletionQueue;
 use squeue::SubmissionQueue;
-use windows::{_NT_IORING_STRUCTV1, _NT_IORING_INFO};
 use std::{io, mem::MaybeUninit, os::windows::prelude::RawHandle};
 use submit::Submitter;
+use windows::{_NT_IORING_INFO, _NT_IORING_STRUCTV1};
 
-use crate::windows::{_NT_IORING_CREATE_FLAGS, _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE, _IORING_VERSION_IORING_VERSION_3, _NT_IORING_CREATE_ADVISORY_FLAGS_NT_IORING_CREATE_ADVISORY_FLAG_NONE, NtCreateIoRing};
-
+use crate::windows::{
+    NtCreateIoRing, _IORING_VERSION_IORING_VERSION_3,
+    _NT_IORING_CREATE_ADVISORY_FLAGS_NT_IORING_CREATE_ADVISORY_FLAG_NONE, _NT_IORING_CREATE_FLAGS,
+    _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
+};
 
 pub struct IoRing {
     sq: squeue::Inner,
@@ -109,7 +113,7 @@ impl IoRing {
     /// details.
     #[inline]
     pub fn submit_and_wait(&self, want: usize) -> io::Result<usize> {
-        self.submitter().submit_and_wait(std::u32::MAX,want)
+        self.submitter().submit_and_wait(std::u32::MAX, want)
     }
 
     #[inline]
@@ -117,9 +121,9 @@ impl IoRing {
         Submitter {
             fd: &self.handle,
             info: &self.info,
-            sq_head: self.sq.head,
-            sq_tail: self.sq.tail,
-            sq_flags: self.sq.flags,
+            sq_head: &*self.sq.head,
+            sq_tail: &*self.sq.tail,
+            sq_flags: &*self.sq.flags,
         }
     }
     /// Get the submitter, submission queue and completion queue of the io_uring instance. This can
@@ -133,9 +137,9 @@ impl IoRing {
         let submit = Submitter::new(
             &self.handle,
             &self.info,
-            self.sq.head,
-            self.sq.tail,
-            self.sq.flags,
+            &*self.sq.head,
+            &*self.sq.tail,
+            &*self.sq.flags,
         );
         (submit, self.sq.borrow(), self.cq.borrow())
     }

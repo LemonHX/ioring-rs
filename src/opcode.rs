@@ -2,14 +2,19 @@
 
 #![allow(clippy::new_without_default)]
 
-use std::{mem, os::windows::prelude::RawHandle};
-
-use crate::{squeue::Entry, windows::{_IORING_OP_CODE_IORING_OP_NOP, _NT_IORING_HANDLEREF, HANDLE,_NT_IORING_OP_FLAGS, _NT_IORING_SQE, _IORING_OP_CODE_IORING_OP_READ, NT_IORING_HANDLEREF, NT_IORING_BUFFERREF, _NT_IORING_REG_FILES_FLAGS, _IORING_OP_CODE_IORING_OP_REGISTER_FILES}};
+use crate::{
+    squeue::Entry,
+    windows::{
+        HANDLE, NT_IORING_BUFFERREF, NT_IORING_HANDLEREF, _IORING_OP_CODE_IORING_OP_NOP,
+        _IORING_OP_CODE_IORING_OP_READ, _IORING_OP_CODE_IORING_OP_REGISTER_FILES,
+        _NT_IORING_OP_FLAGS, _NT_IORING_REG_FILES_FLAGS, _NT_IORING_SQE,
+    },
+};
 
 /// inline zeroed io improve codegen
 #[inline(always)]
 fn sqe_zeroed() -> _NT_IORING_SQE {
-    unsafe { mem::zeroed() }
+    unsafe { std::mem::zeroed() }
 }
 
 macro_rules! opcode {
@@ -147,6 +152,38 @@ opcode!(
 
     pub fn build(self) -> Entry {
         let RegisterFiles {
+            handles,
+            count,
+            flags,
+            common_op_flags,
+         } = self;
+
+        let mut sqe = sqe_zeroed();
+        sqe.OpCode =  Self::CODE;
+        sqe.__bindgen_anon_1.RegisterFiles.__bindgen_anon_1.Handles = handles as * mut _;
+        sqe.__bindgen_anon_1.RegisterFiles.CommonOpFlags =common_op_flags;
+        sqe.__bindgen_anon_1.RegisterFiles.Count = count;
+        sqe.__bindgen_anon_1.RegisterFiles.Flags = flags;
+        Entry(sqe)
+    }
+);
+
+opcode!(
+    /// This command is an alternative to using
+    /// [`Submitter::register_files_update`](crate::Submitter::register_files_update) which then
+    /// works in an async fashion, like the rest of the io_uring commands.
+    pub struct RegisterBuffers {
+        handles :{ *const HANDLE},
+        count:{u32},
+        flags:{_NT_IORING_REG_FILES_FLAGS},
+        common_op_flags:{_NT_IORING_OP_FLAGS}
+     ;;
+    }
+
+    pub const CODE = _IORING_OP_CODE_IORING_OP_REGISTER_FILES;
+
+    pub fn build(self) -> Entry {
+        let RegisterBuffers {
             handles,
             count,
             flags,
