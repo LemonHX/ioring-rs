@@ -1,29 +1,16 @@
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
+
 use std::sync::atomic;
 
-// use crate::sys;
-use xmmap::Mmap;
-
-use bitflags::bitflags;
-
-/// typedef struct _NT_IORING_SUBMISSION_QUEUE
-/// {
-///     /* 0x0000 */ uint32_t Head;
-///     /* 0x0004 */ uint32_t Tail;
-///     /* 0x0008 */ NT_IORING_SQ_FLAGS Flags;
-///     /* 0x0010 */ NT_IORING_SQE Entries[];
-/// } NT_IORING_SUBMISSION_QUEUE, * PNT_IORING_SUBMISSION_QUEUE; /* size: 0x0010 */
+use crate::windows::{_NT_IORING_INFO, _NT_IORING_SQE, _NT_IORING_SQE_FLAGS};
 
 pub(crate) struct Inner {
     pub(crate) head: *const atomic::AtomicU32,
     pub(crate) tail: *const atomic::AtomicU32,
     pub(crate) ring_mask: u32,
-    pub(crate) ring_entries: u32,
     pub(crate) flags: *const atomic::AtomicU32,
-    dropped: *const atomic::AtomicU32,
-
-    pub(crate) sqes: *mut crate::windows::_NT_IORING_SQE,
+    pub(crate) sqes: *mut _NT_IORING_SQE,
 }
 
 pub struct SubmissionQueue<'a> {
@@ -32,34 +19,12 @@ pub struct SubmissionQueue<'a> {
     queue: &'a Inner,
 }
 
-// typedef struct _NT_IORING_SQE
-// {
-//     /* 0x0000 */ IORING_OP_CODE OpCode;
-//     /* 0x0004 */ NT_IORING_SQE_FLAGS Flags;
-//     /* 0x0008 */ uint64_t UserData;
-//     union
-//     {
-//         /* 0x0010 */ NT_IORING_OP_READ Read;
-//         /* 0x0010 */ NT_IORING_OP_REGISTER_FILES RegisterFiles;
-//         /* 0x0010 */ NT_IORING_OP_REGISTER_BUFFERS RegisterBuffers;
-//         /* 0x0010 */ NT_IORING_OP_CANCEL Cancel;
-//         /* 0x0010 */ NT_IORING_OP_WRITE Write;
-//         /* 0x0010 */ NT_IORING_OP_FLUSH Flush;
-//         /* 0x0010 */ NT_IORING_OP_RESERVED ReservedMaxSizePadding;
-//     }; /* size: 0x0030 */
-// } NT_IORING_SQE, * PNT_IORING_SQE; /* size: 0x0040 */
 /// An entry in the submission queue, representing a request for an I/O operation.
 ///
 /// These can be created via the opcodes in [`opcode`](crate::opcode).
 #[repr(transparent)]
 #[derive(Clone)]
-pub struct Entry(pub(crate) crate::windows::_NT_IORING_SQE);
-
-impl Inner {
-    pub(crate) unsafe fn new() {
-        todo!()
-    }
-}
+pub struct Entry(pub(crate) _NT_IORING_SQE);
 
 /// An error pushing to the submission queue due to it being full.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,12 +39,185 @@ impl Display for PushError {
 
 impl Error for PushError {}
 
-// impl Debug for Entry {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         f.debug_struct("Entry")
-//             .field("op_code", &self.0.opcode)
-//             .field("flags", &self.0.flags)
-//             .field("user_data", &self.0.user_data)
-//             .finish()
-//     }
-// }
+impl Inner {
+    #[rustfmt::skip]
+    pub(crate) unsafe fn new(
+        p: &_NT_IORING_INFO,
+    ) -> Self {
+        let head = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Head as *const atomic::AtomicU32;
+        let tail = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Tail as *const atomic::AtomicU32;
+        let flags = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Flags as *const atomic::AtomicU32;
+        let ring_mask = p.SubmissionQueueRingMask;
+        let sqes = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Entries.as_mut_ptr() as *mut _NT_IORING_SQE;
+        Self {
+            head,
+            tail,
+            ring_mask,
+            flags,
+            sqes,
+        }
+    }
+
+    #[inline]
+    pub(crate) unsafe fn borrow_shared(&self) -> SubmissionQueue<'_> {
+        SubmissionQueue {
+            head: (*self.head).load(atomic::Ordering::Acquire),
+            tail: (*self.tail).load(atomic::Ordering::Acquire),
+            queue: self,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn borrow(&mut self) -> SubmissionQueue<'_> {
+        unsafe { self.borrow_shared() }
+    }
+}
+
+impl SubmissionQueue<'_> {
+    /// Synchronize this type with the real submission queue.
+    ///
+    /// This will flush any entries added by [`push`](Self::push) or
+    /// [`push_multiple`](Self::push_multiple) and will update the queue's length if the kernel has
+    /// consumed some entries in the meantime.
+    #[inline]
+    pub fn sync(&mut self) {
+        unsafe {
+            (*self.queue.tail).store(self.tail, atomic::Ordering::Release);
+            self.head = (*self.queue.head).load(atomic::Ordering::Acquire);
+        }
+    }
+
+    /// Get the total number of entries in the submission queue ring buffer.
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        // let view = (&self.queue.sqes) as *const _ as *const IORING_SQE;
+        // let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<IORING_SQE>()) };
+        // slice.len() as usize
+        todo!()
+    }
+
+    /// Get the number of submission queue events in the ring buffer.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.tail.wrapping_sub(self.head) as usize
+    }
+
+    /// Returns `true` if the submission queue ring buffer is empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns `true` if the submission queue ring buffer has reached capacity, and no more events
+    /// can be added before the kernel consumes some.
+    #[inline]
+    pub fn is_full(&self) -> bool {
+        self.len() == self.capacity()
+    }
+
+    /// Attempts to push an [`Entry`] into the queue.
+    /// If the queue is full, an error is returned.
+    ///
+    /// # Safety
+    ///
+    /// Developers must ensure that parameters of the [`Entry`] (such as buffer) are valid and will
+    /// be valid for the entire duration of the operation, otherwise it may cause memory problems.
+    #[inline]
+    pub unsafe fn push(&mut self, Entry(entry): &Entry) -> Result<(), PushError> {
+        if !self.is_full() {
+            *self
+                .queue
+                .sqes
+                .add((self.tail & self.queue.ring_mask) as usize) = *entry;
+            self.tail = self.tail.wrapping_add(1);
+            Ok(())
+        } else {
+            Err(PushError)
+        }
+    }
+
+    /// Attempts to push several [entries](Entry) into the queue.
+    /// If the queue does not have space for all of the entries, an error is returned.
+    ///
+    /// # Safety
+    ///
+    /// Developers must ensure that parameters of all the entries (such as buffer) are valid and
+    /// will be valid for the entire duration of the operation, otherwise it may cause memory
+    /// problems.
+    #[cfg(feature = "unstable")]
+    #[inline]
+    pub unsafe fn push_multiple(&mut self, entries: &[Entry]) -> Result<(), PushError> {
+        if self.capacity() - self.len() < entries.len() {
+            return Err(PushError);
+        }
+
+        for Entry(entry) in entries {
+            *self
+                .queue
+                .sqes
+                .add((self.tail & self.queue.ring_mask) as usize) = *entry;
+            self.tail = self.tail.wrapping_add(1);
+        }
+
+        Ok(())
+    }
+}
+
+impl Drop for SubmissionQueue<'_> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { &*self.queue.tail }.store(self.tail, atomic::Ordering::Release);
+    }
+}
+
+impl Entry {
+    /// Set the submission event's [flags](Flags).
+    #[inline]
+    pub fn flags(mut self, flags: _NT_IORING_SQE_FLAGS) -> Entry {
+        self.0.Flags = flags;
+        self
+    }
+
+    /// Set the user data. This is an application-supplied value that will be passed straight
+    /// through into the [completion queue entry](crate::cqueue::Entry::user_data).
+    #[inline]
+    pub fn user_data(mut self, user_data: u64) -> Entry {
+        self.0.UserData = user_data;
+        self
+    }
+
+    /// Set the personality of this event. You can obtain a personality using
+    /// [`Submitter::register_personality`](crate::Submitter::register_personality).
+    ///
+    /// Requires the `unstable` feature.
+    #[cfg(feature = "unstable")]
+    pub fn personality(mut self, personality: u16) -> Entry {
+        self.0.personality = personality;
+        self
+    }
+}
+
+impl Debug for Entry {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Entry")
+            .field("op_code", &self.0.OpCode)
+            .field("flags", &self.0.Flags)
+            .field("user_data", &self.0.UserData)
+            .finish()
+    }
+}
+
+impl Debug for SubmissionQueue<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_list();
+        let mut pos = self.head;
+        while pos != self.tail {
+            let entry: &Entry = unsafe {
+                &*(self.queue.sqes.add((pos & self.queue.ring_mask) as usize) as *const Entry)
+            };
+            d.entry(&entry);
+            pos = pos.wrapping_add(1);
+        }
+        d.finish()
+    }
+}

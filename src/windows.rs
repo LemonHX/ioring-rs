@@ -459,6 +459,13 @@ pub union _NT_IORING_HANDLEREF {
     pub Handle: u64,
     pub HandleIndex: u64,
 }
+impl ::core::fmt::Debug for _NT_IORING_HANDLEREF {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+       unsafe{ f.debug_struct("_NT_IORING_HANDLEREF")
+            .field("Handle", &self.Handle)
+            .finish()}
+    }
+}
 #[test]
 fn bindgen_test_layout__NT_IORING_HANDLEREF() {
     assert_eq!(
@@ -572,6 +579,15 @@ pub type PIORING_REGISTERED_BUFFER = _IORING_REGISTERED_BUFFER;
 pub union _NT_IORING_BUFFERREF {
     pub Address: u64,
     pub FixedBuffer: IORING_REGISTERED_BUFFER,
+}
+impl ::core::fmt::Debug for _NT_IORING_BUFFERREF {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        unsafe {
+            f.debug_struct("_NT_IORING_BUFFERREF")
+                .field("Address", &self.Address)
+                .finish()
+        }
+    }
 }
 #[test]
 fn bindgen_test_layout__NT_IORING_BUFFERREF() {
