@@ -1,14 +1,14 @@
 use std::{fmt, sync::atomic};
 
-use windows::Win32::Storage::FileSystem::{IORING_CQE, IORING_INFO};
+use crate::windows::{_NT_IORING_CQE, _NT_IORING_INFO};
 
 pub(crate) struct Inner {
     head: *const atomic::AtomicU32,
     tail: *const atomic::AtomicU32,
     ring_mask: u32,
 
-    cqes: *const IORING_CQE,
-    info: *const IORING_INFO,
+    cqes: *const _NT_IORING_CQE,
+    info: *const _NT_IORING_INFO,
 }
 
 /// An io_uring instance's completion queue. This stores all the I/O operations that have completed.
@@ -16,20 +16,20 @@ pub struct CompletionQueue<'a> {
     head: u32,
     tail: u32,
     queue: &'a Inner,
-    info: &'a IORING_INFO,
+    info: &'a _NT_IORING_INFO,
 }
 
 /// An entry in the completion queue, representing a complete I/O operation.
 #[repr(transparent)]
 #[derive(Clone)]
-pub struct Entry(pub(crate) IORING_CQE);
+pub struct Entry(pub(crate) _NT_IORING_CQE);
 
 impl Inner {
-    pub(crate) unsafe fn new(p: &IORING_INFO) -> Self {
-        let head = p.CompletionQueue.as_mut().unwrap().Head as *const atomic::AtomicU32;
-        let tail = p.CompletionQueue.as_mut().unwrap().Tail as *const atomic::AtomicU32;
-        let ring_mask = p.CompletionQueueSizeMask;
-        let cqes = p.CompletionQueue.as_mut().unwrap().Entries as *const IORING_CQE;
+    pub(crate) unsafe fn new(p: &_NT_IORING_INFO) -> Self {
+        let head = p.__bindgen_anon_2.CompletionQueue.as_mut().unwrap().Head as *const atomic::AtomicU32;
+        let tail = p.__bindgen_anon_2.CompletionQueue.as_mut().unwrap().Tail as *const atomic::AtomicU32;
+        let ring_mask = p.CompletionQueueRingMask;
+        let cqes = p.__bindgen_anon_2.CompletionQueue.as_mut().unwrap().Entries.as_mut_ptr() as *const _NT_IORING_CQE;
         let info = p;
         Self {
             head,
@@ -72,8 +72,8 @@ impl CompletionQueue<'_> {
     /// Get the total number of entries in the completion queue ring buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
-        // let view = (&self.queue.cqes) as *const _ as *const IORING_CQE;
-        // let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<IORING_CQE>()) };
+        // let view = (&self.queue.cqes) as *const _ as *const _NT_IORING_CQE;
+        // let slice = unsafe { std::slice::from_raw_parts(view, mem::size_of::<_NT_IORING_CQE>()) };
         // slice.len() as usize
         todo!()
     }
@@ -151,18 +151,11 @@ impl ExactSizeIterator for CompletionQueue<'_> {
 }
 
 impl Entry {
-    /// The operation-specific result code. For example, for a [`Read`](crate::opcode::Read)
-    /// operation this is equivalent to the return value of the `read(2)` system call.
-    #[inline]
-    pub fn result(&self) -> i32 {
-        self.0.ResultCode.0
-    }
-
     /// The user data of the request, as set by
     /// [`Entry::user_data`](crate::squeue::Entry::user_data) on the submission queue event.
     #[inline]
     pub fn user_data(&self) -> usize {
-        self.0.UserData
+        self.0.UserData as _
     }
 
     /// Metadata related to the operation.
@@ -171,31 +164,17 @@ impl Entry {
     /// - Storing the selected buffer ID, if one was selected. See
     /// [`BUFFER_SELECT`](crate::squeue::Flags::BUFFER_SELECT) for more info.
     #[inline]
-    pub fn Information(&self) -> usize {
-        self.0.Information
+    pub fn information(&self) -> usize {
+        self.0.Information as _
     }
 }
 
 impl fmt::Debug for Entry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Entry")
-            .field("result", &self.result())
             .field("user_data", &self.user_data())
-            .field("Information", &self.Information())
+            .field("Information", &self.information())
             .finish()
     }
 }
 
-#[cfg(feature = "unstable")]
-pub fn buffer_select(flags: u32) -> Option<u16> {
-    if flags & sys::IORING_CQE_F_BUFFER != 0 {
-        let id = flags >> sys::IORING_CQE_BUFFER_SHIFT;
-
-        // FIXME
-        //
-        // Should we return u16? maybe kernel will change value of `IORING_CQE_BUFFER_SHIFT` in future.
-        Some(id as u16)
-    } else {
-        None
-    }
-}
