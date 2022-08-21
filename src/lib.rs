@@ -60,7 +60,7 @@ impl IoRing {
         }
     }
     fn with_params(entries: u32, mut p: _NT_IORING_INFO) -> std::io::Result<IoRing> {
-        let mut handle: RawHandle = unsafe { MaybeUninit::uninit().assume_init() };
+        let mut handle: RawHandle = unsafe { std::mem::zeroed() };
         let mut ioring_struct = _NT_IORING_STRUCTV1 {
             IoRingVersion: _IORING_VERSION_IORING_VERSION_3,
             SubmissionQueueSize: entries,

@@ -59,7 +59,7 @@ impl<'a> Submitter<'a> {
                 _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
                 number_of_entries,
                 if number_of_entries == 0 || want == std::usize::MAX {
-                    &mut { MaybeUninit::uninit().assume_init() }
+                    &mut { std::mem::zeroed() }
                 } else {
                     &mut (want as u64)
                 },
