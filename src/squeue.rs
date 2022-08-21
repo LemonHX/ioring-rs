@@ -3,14 +3,14 @@ use std::fmt::{self, Debug, Display, Formatter};
 
 use std::sync::atomic;
 
-use windows::Win32::Storage::FileSystem::{IORING_INFO, IORING_SQE, IORING_SQE_FLAGS};
+use crate::windows::{_NT_IORING_INFO, _NT_IORING_SQE, _NT_IORING_SQE_FLAGS};
 
 pub(crate) struct Inner {
     pub(crate) head: *const atomic::AtomicU32,
     pub(crate) tail: *const atomic::AtomicU32,
     pub(crate) ring_mask: u32,
     pub(crate) flags: *const atomic::AtomicU32,
-    pub(crate) sqes: *mut windows::Win32::Storage::FileSystem::IORING_SQE,
+    pub(crate) sqes: *mut _NT_IORING_SQE,
 }
 
 pub struct SubmissionQueue<'a> {
@@ -24,7 +24,7 @@ pub struct SubmissionQueue<'a> {
 /// These can be created via the opcodes in [`opcode`](crate::opcode).
 #[repr(transparent)]
 #[derive(Clone)]
-pub struct Entry(pub(crate) IORING_SQE);
+pub struct Entry(pub(crate) _NT_IORING_SQE);
 
 /// An error pushing to the submission queue due to it being full.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,13 +42,13 @@ impl Error for PushError {}
 impl Inner {
     #[rustfmt::skip]
     pub(crate) unsafe fn new(
-        p: &IORING_INFO,
+        p: &_NT_IORING_INFO,
     ) -> Self {
-        let head = p.SubmissionQueue.as_mut().unwrap().Head as *const atomic::AtomicU32;
-        let tail = p.SubmissionQueue.as_mut().unwrap().Tail as *const atomic::AtomicU32;
-        let flags = p.SubmissionQueue.as_mut().unwrap().Flags.0 as *const atomic::AtomicU32;
-        let ring_mask = p.SubmissionQueueSizeMask;
-        let sqes = p.SubmissionQueue.as_mut().unwrap().Entries as *mut IORING_SQE;
+        let head = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Head as *const atomic::AtomicU32;
+        let tail = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Tail as *const atomic::AtomicU32;
+        let flags = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Flags as *const atomic::AtomicU32;
+        let ring_mask = p.SubmissionQueueRingMask;
+        let sqes = p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Entries.as_mut_ptr() as *mut _NT_IORING_SQE;
         Self {
             head,
             tail,
@@ -173,7 +173,7 @@ impl Drop for SubmissionQueue<'_> {
 impl Entry {
     /// Set the submission event's [flags](Flags).
     #[inline]
-    pub fn flags(mut self, flags: IORING_SQE_FLAGS) -> Entry {
+    pub fn flags(mut self, flags: _NT_IORING_SQE_FLAGS) -> Entry {
         self.0.Flags = flags;
         self
     }

@@ -1,8 +1,12 @@
-use std::{io, os::windows::prelude::RawHandle, sync::atomic};
+use std::{io, mem::MaybeUninit, os::windows::prelude::RawHandle, sync::atomic};
 
-use windows::Win32::Storage::FileSystem::{SubmitIoRing, IORING_SQE};
-
-use crate::Info;
+use crate::{
+    windows::{
+        NtSubmitIoRing, _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
+        _NT_IORING_SQE,
+    },
+    Info,
+};
 
 const BS: usize = 32 * 1024;
 
@@ -42,13 +46,24 @@ impl<'a> Submitter<'a> {
     /// Submit all queued submission queue events to the kernel.
     #[inline]
     pub fn submit(&self) -> io::Result<usize> {
-        self.submit_and_wait(0)
+        self.submit_and_wait(std::u32::MAX, 0)
     }
 
     /// Submit all queued submission queue events to the kernel and wait for at least `want`
     /// completion events to complete.
-    pub fn submit_and_wait(&self, want: usize) -> io::Result<usize> {
-        let res = unsafe { SubmitIoRing(std::mem::transmute(self.fd), 0, want as u32) }.unwrap();
+    pub fn submit_and_wait(&self, number_of_entries: u32, want: usize) -> io::Result<usize> {
+        let res = unsafe {
+            NtSubmitIoRing(
+                *self.fd,
+                _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
+                number_of_entries,
+                if number_of_entries == 0 || want == std::usize::MAX {
+                    &mut { MaybeUninit::uninit().assume_init() }
+                } else {
+                    &mut (want as u64)
+                },
+            )
+        };
         if res == 0 {
             Ok(self.sq_len())
         } else {
@@ -56,22 +71,21 @@ impl<'a> Submitter<'a> {
         }
     }
     /// Get the sqe ring
-    pub fn get_sqe(&self) -> io::Result<IORING_SQE> {
+    pub fn get_sqe(&self) -> io::Result<_NT_IORING_SQE> {
         if !self.sq_space_left() > 0 {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 "No space left in sqe ring",
             ));
         }
-
-        let sqe = unsafe {
-            *(*self.info.0.SubmissionQueue).Entries.add(
-                ((*self.info.0.SubmissionQueue).Tail & self.info.0.SubmissionQueueSizeMask)
-                    as usize,
-            )
-        };
+        let sqe;
         unsafe {
-            (*self.info.0.SubmissionQueue).Tail += 1;
+            let len = ((*self.info.0.__bindgen_anon_1.SubmissionQueue).Tail
+                & self.info.0.SubmissionQueueRingMask) as usize;
+            sqe = (*self.info.0.__bindgen_anon_1.SubmissionQueue)
+                .Entries
+                .as_slice(len + 1)[len];
+            (*self.info.0.__bindgen_anon_1.SubmissionQueue).Tail += 1;
         }
         Ok(sqe)
     }
@@ -86,8 +100,7 @@ impl<'a> Submitter<'a> {
     pub fn register_buffers(&self, infd: &'a RawHandle, outfd: &'a RawHandle) -> io::Result<()> {
         let _sqe = &self.get_sqe();
         let _fds = [infd, outfd];
-
-        Ok(())
+        todo!()
     }
 
     /// Register files for I/O. You can use the registered files with
@@ -99,6 +112,6 @@ impl<'a> Submitter<'a> {
     /// Note that this will wait for the ring to idle; it will only return once all active requests
     /// are complete. Use [`register_files_update`](Self::register_files_update) to avoid this.
     pub fn register_files(&self, _fds: &[RawHandle]) -> io::Result<()> {
-        Ok(())
+        todo!()
     }
 }

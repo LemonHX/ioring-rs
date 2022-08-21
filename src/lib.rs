@@ -3,15 +3,17 @@ pub mod squeue;
 pub mod cqueue;
 pub mod opcode;
 pub mod submit;
+pub mod windows;
 
 use cqueue::CompletionQueue;
 use squeue::SubmissionQueue;
-use std::{io, os::windows::prelude::RawHandle};
+use windows::{_NT_IORING_STRUCTV1, _NT_IORING_INFO};
+use std::{io, mem::MaybeUninit, os::windows::prelude::RawHandle};
 use submit::Submitter;
-use windows::Win32::Storage::FileSystem::{
-    CreateIoRing, IORING_CREATE_ADVISORY_FLAGS_NONE, IORING_CREATE_FLAGS,
-    IORING_CREATE_REQUIRED_FLAGS_NONE, IORING_INFO, IORING_VERSION_3,
-};
+
+use crate::windows::{_NT_IORING_CREATE_FLAGS, _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE, _IORING_VERSION_IORING_VERSION_3, _NT_IORING_CREATE_ADVISORY_FLAGS_NT_IORING_CREATE_ADVISORY_FLAG_NONE, NtCreateIoRing};
+
+
 pub struct IoRing {
     sq: squeue::Inner,
     cq: cqueue::Inner,
@@ -23,12 +25,12 @@ pub struct IoRing {
 #[derive(Clone, Default)]
 pub struct Builder {
     dontfork: bool,
-    info: IORING_INFO,
+    info: _NT_IORING_INFO,
 }
 
 /// The Info that were used to construct an [`IoRing`].
 #[derive(Clone)]
-pub struct Info(IORING_INFO);
+pub struct Info(_NT_IORING_INFO);
 
 unsafe impl Send for IoRing {}
 unsafe impl Sync for IoRing {}
@@ -50,26 +52,32 @@ impl IoRing {
     pub fn builder() -> Builder {
         Builder {
             dontfork: false,
-            info: IORING_INFO::default(),
+            info: _NT_IORING_INFO::default(),
         }
     }
-    fn with_params(entries: u32, mut p: IORING_INFO) -> std::io::Result<IoRing> {
-        p.SubmissionQueueSize = entries;
-        p.CompletionQueueSize = entries * 2;
-        let res = unsafe {
-            CreateIoRing(
-                IORING_VERSION_3,
-                IORING_CREATE_FLAGS {
-                    Required: IORING_CREATE_REQUIRED_FLAGS_NONE,
-                    Advisory: IORING_CREATE_ADVISORY_FLAGS_NONE,
-                },
-                entries,
-                entries * 2,
-            )
-            .expect("CreateIoRing failed")
+    fn with_params(entries: u32, mut p: _NT_IORING_INFO) -> std::io::Result<IoRing> {
+        let mut handle: RawHandle = unsafe { MaybeUninit::uninit().assume_init() };
+        let mut ioring_struct = _NT_IORING_STRUCTV1 {
+            IoRingVersion: _IORING_VERSION_IORING_VERSION_3,
+            SubmissionQueueSize: entries,
+            CompletionQueueSize: entries * 2,
+            Flags: _NT_IORING_CREATE_FLAGS {
+                Required: _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
+                Advisory: _NT_IORING_CREATE_ADVISORY_FLAGS_NT_IORING_CREATE_ADVISORY_FLAG_NONE,
+            },
         };
+        let res = unsafe {
+            NtCreateIoRing(
+                &mut handle,
+                std::mem::size_of::<_NT_IORING_STRUCTV1>() as u32,
+                &mut ioring_struct,
+                std::mem::size_of::<_NT_IORING_INFO>() as u32,
+                &mut p,
+            )
+        };
+        dbg!(res);
         #[inline]
-        unsafe fn setup_queue(p: &IORING_INFO) -> io::Result<(squeue::Inner, cqueue::Inner)> {
+        unsafe fn setup_queue(p: &_NT_IORING_INFO) -> io::Result<(squeue::Inner, cqueue::Inner)> {
             let sq = squeue::Inner::new(p);
             let cq = cqueue::Inner::new(p);
 
@@ -81,7 +89,7 @@ impl IoRing {
             sq,
             cq,
             info: Info(p),
-            handle: res as _,
+            handle,
         })
     }
 
@@ -101,7 +109,7 @@ impl IoRing {
     /// details.
     #[inline]
     pub fn submit_and_wait(&self, want: usize) -> io::Result<usize> {
-        self.submitter().submit_and_wait(want)
+        self.submitter().submit_and_wait(std::u32::MAX,want)
     }
 
     #[inline]
