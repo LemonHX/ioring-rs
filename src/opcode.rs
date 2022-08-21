@@ -7,13 +7,13 @@ use crate::{
     windows::{
         HANDLE, NT_IORING_BUFFERREF, NT_IORING_HANDLEREF, _IORING_OP_CODE_IORING_OP_NOP,
         _IORING_OP_CODE_IORING_OP_READ, _IORING_OP_CODE_IORING_OP_REGISTER_FILES,
-        _NT_IORING_OP_FLAGS, _NT_IORING_REG_FILES_FLAGS, _NT_IORING_SQE,
+        _NT_IORING_OP_FLAGS, _NT_IORING_REG_FILES_FLAGS, _NT_IORING_SUBMISSION_QUEUE,
     },
 };
 
 /// inline zeroed io improve codegen
 #[inline(always)]
-fn sqe_zeroed() -> _NT_IORING_SQE {
+fn sqe_zeroed() -> _NT_IORING_SUBMISSION_QUEUE {
     unsafe { std::mem::zeroed() }
 }
 

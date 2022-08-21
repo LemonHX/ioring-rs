@@ -118,12 +118,14 @@ impl IoRing {
 
     #[inline]
     pub fn submitter(&self) -> Submitter<'_> {
-        Submitter {
-            fd: &self.handle,
-            info: &self.info,
-            sq_head: &*self.sq.head,
-            sq_tail: &*self.sq.tail,
-            sq_flags: &*self.sq.flags,
+        unsafe {
+            Submitter {
+                fd: &self.handle,
+                info: &self.info,
+                sq_head: self.sq.sqes.as_ref().unwrap().Head,
+                sq_tail: self.sq.sqes.as_ref().unwrap().Tail,
+                sq_flags: self.sq.sqes.as_ref().unwrap().Flags,
+            }
         }
     }
     /// Get the submitter, submission queue and completion queue of the io_uring instance. This can
@@ -137,9 +139,9 @@ impl IoRing {
         let submit = Submitter::new(
             &self.handle,
             &self.info,
-            &*self.sq.head,
-            &*self.sq.tail,
-            &*self.sq.flags,
+            self.sq.head,
+            self.sq.tail,
+            self.sq.flags,
         );
         (submit, self.sq.borrow(), self.cq.borrow())
     }

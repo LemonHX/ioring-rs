@@ -3,14 +3,13 @@ use std::fmt::{self, Debug, Display, Formatter};
 
 use std::sync::atomic;
 
-use crate::windows::{_NT_IORING_INFO, _NT_IORING_SQE, _NT_IORING_SQE_FLAGS};
+use crate::windows::{
+    _NT_IORING_INFO, _NT_IORING_SQE, _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE,
+};
 
 pub(crate) struct Inner {
-    pub(crate) head: Box<atomic::AtomicU32>,
-    pub(crate) tail: Box<atomic::AtomicU32>,
     pub(crate) ring_mask: u32,
-    pub(crate) flags: Box<atomic::AtomicI32>,
-    pub(crate) sqes: *mut _NT_IORING_SQE,
+    pub(crate) sqes: *const _NT_IORING_SUBMISSION_QUEUE,
 }
 
 pub struct SubmissionQueue<'a> {
@@ -24,7 +23,7 @@ pub struct SubmissionQueue<'a> {
 /// These can be created via the opcodes in [`opcode`](crate::opcode).
 #[repr(transparent)]
 #[derive(Clone)]
-pub struct Entry(pub(crate) _NT_IORING_SQE);
+pub struct Entry(pub(crate) _NT_IORING_SUBMISSION_QUEUE);
 
 /// An error pushing to the submission queue due to it being full.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,37 +40,19 @@ impl Error for PushError {}
 
 impl Inner {
     pub(crate) unsafe fn new(p: &_NT_IORING_INFO) -> Self {
-        let head = Box::new(atomic::AtomicU32::new(
-            p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Head,
-        ));
-        let tail = Box::new(atomic::AtomicU32::new(
-            p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Tail,
-        ));
-        let flags = Box::new(atomic::AtomicI32::new(
-            p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Flags,
-        ));
+        // let head = Box::new(atomic::AtomicU32::new(
+        //     p.__bindgen_anon_1.SubmissionQueue.as_mut().unwrap().Head,
+        // ));
         let ring_mask = p.SubmissionQueueRingMask;
-        let sqes = p
-            .__bindgen_anon_1
-            .SubmissionQueue
-            .as_mut()
-            .unwrap()
-            .Entries
-            .as_mut_ptr() as *mut _NT_IORING_SQE;
-        Self {
-            head,
-            tail,
-            ring_mask,
-            flags,
-            sqes,
-        }
+        let sqes = p.__bindgen_anon_1.SubmissionQueue;
+        Self { ring_mask, sqes }
     }
 
     #[inline]
     pub(crate) unsafe fn borrow_shared(&self) -> SubmissionQueue<'_> {
         SubmissionQueue {
-            head: (*self.head).load(atomic::Ordering::Acquire),
-            tail: (*self.tail).load(atomic::Ordering::Acquire),
+            head: self.sqes.as_ref().unwrap().Head,
+            tail: self.sqes.as_ref().unwrap().Tail,
             queue: self,
         }
     }
@@ -91,8 +72,8 @@ impl SubmissionQueue<'_> {
     #[inline]
     pub fn sync(&mut self) {
         unsafe {
-            (*self.queue.tail).store(self.tail, atomic::Ordering::Release);
-            self.head = (*self.queue.head).load(atomic::Ordering::Acquire);
+            self.tail = self.queue.sqes.as_ref().unwrap().Head;
+            self.head = self.queue.sqes.as_ref().unwrap().Tail;
         }
     }
 
@@ -172,13 +153,6 @@ impl SubmissionQueue<'_> {
     }
 }
 
-impl Drop for SubmissionQueue<'_> {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe { &*self.queue.tail }.store(self.tail, atomic::Ordering::Release);
-    }
-}
-
 impl Entry {
     /// Set the submission event's [flags](Flags).
     #[inline]
@@ -191,7 +165,9 @@ impl Entry {
     /// through into the [completion queue entry](crate::cqueue::Entry::user_data).
     #[inline]
     pub fn user_data(mut self, user_data: u64) -> Entry {
-        self.0.UserData = user_data;
+        unsafe {
+            std::ptr::read(self.0.Entries).UserData = user_data;
+        }
         self
     }
 
@@ -208,11 +184,13 @@ impl Entry {
 
 impl Debug for Entry {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Entry")
-            .field("op_code", &self.0.OpCode)
-            .field("flags", &self.0.Flags)
-            .field("user_data", &self.0.UserData)
-            .finish()
+        unsafe {
+            f.debug_struct("Entry")
+                .field("op_code", &std::ptr::read(self.0.Entries).OpCode)
+                .field("flags", &std::ptr::read(self.0.Entries).Flags)
+                .field("user_data", &std::ptr::read(self.0.Entries).UserData)
+                .finish()
+        }
     }
 }
 

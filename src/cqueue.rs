@@ -17,7 +17,7 @@ pub struct CompletionQueue<'a> {
 /// An entry in the completion queue, representing a complete I/O operation.
 #[repr(transparent)]
 #[derive(Clone)]
-pub struct Entry(pub(crate) _NT_IORING_CQE);
+pub struct Entry(pub(crate) _NT_IORING_COMPLETION_QUEUE);
 
 impl Inner {
     pub(crate) unsafe fn new(p: &_NT_IORING_INFO) -> Self {

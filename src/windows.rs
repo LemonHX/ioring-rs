@@ -1955,11 +1955,12 @@ pub const _NT_IORING_SQ_FLAGS_NT_IORING_SQ_FLAG_NONE: _NT_IORING_SQ_FLAGS = 0;
 pub type _NT_IORING_SQ_FLAGS = ::std::os::raw::c_int;
 pub use self::_NT_IORING_SQ_FLAGS as NT_IORING_SQ_FLAGS;
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct _NT_IORING_SUBMISSION_QUEUE {
     pub Head: u32,
     pub Tail: u32,
     pub Flags: NT_IORING_SQ_FLAGS,
-    pub Entries: __IncompleteArrayField<NT_IORING_SQE>,
+    pub Entries: *const NT_IORING_SQE,
 }
 #[test]
 fn bindgen_test_layout__NT_IORING_SUBMISSION_QUEUE() {
@@ -2104,10 +2105,11 @@ fn bindgen_test_layout__NT_IORING_CQE() {
 pub type NT_IORING_CQE = _NT_IORING_CQE;
 pub type PNT_IORING_CQE = *mut _NT_IORING_CQE;
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct _NT_IORING_COMPLETION_QUEUE {
     pub Head: u32,
     pub Tail: u32,
-    pub Entries: __IncompleteArrayField<NT_IORING_CQE>,
+    pub Entries: *const NT_IORING_CQE,
 }
 #[test]
 fn bindgen_test_layout__NT_IORING_COMPLETION_QUEUE() {
@@ -2156,7 +2158,7 @@ impl Default for _NT_IORING_INFO {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union _NT_IORING_INFO__bindgen_ty_1 {
-    pub SubmissionQueue: *mut NT_IORING_SUBMISSION_QUEUE,
+    pub SubmissionQueue: *const NT_IORING_SUBMISSION_QUEUE,
     pub PadX86_SubmissionQueue: u64,
 }
 #[test]
