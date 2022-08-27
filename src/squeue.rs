@@ -1,15 +1,14 @@
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
-use std::sync::atomic;
-
 use crate::windows::{
-    _NT_IORING_INFO, _NT_IORING_SQE, _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE,
+    _NT_IORING_INFO, _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE,
 };
 
 pub(crate) struct Inner {
     pub(crate) ring_mask: u32,
-    pub(crate) sqes: *const _NT_IORING_SUBMISSION_QUEUE,
+    pub(crate) info: _NT_IORING_INFO,
+    pub(crate) sqes: *mut _NT_IORING_SUBMISSION_QUEUE,
 }
 
 pub struct SubmissionQueue<'a> {
@@ -45,7 +44,11 @@ impl Inner {
         // ));
         let ring_mask = p.SubmissionQueueRingMask;
         let sqes = p.__bindgen_anon_1.SubmissionQueue;
-        Self { ring_mask, sqes }
+        Self {
+            ring_mask,
+            sqes,
+            info: *p,
+        }
     }
 
     #[inline]
@@ -80,10 +83,7 @@ impl SubmissionQueue<'_> {
     /// Get the total number of entries in the submission queue ring buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
-        let view = (&self.queue.sqes) as *const _ as *const _NT_IORING_SQE;
-        let slice =
-            unsafe { std::slice::from_raw_parts(view, std::mem::size_of::<_NT_IORING_SQE>()) };
-        slice.len() as usize
+        self.queue.info.SubmissionQueueSize as usize
     }
 
     /// Get the number of submission queue events in the ring buffer.
@@ -166,7 +166,7 @@ impl Entry {
     #[inline]
     pub fn user_data(mut self, user_data: u64) -> Entry {
         unsafe {
-            std::ptr::read(self.0.Entries).UserData = user_data;
+            self.0.Entries.as_mut_ptr().as_mut().unwrap().UserData = user_data;
         }
         self
     }
@@ -186,9 +186,9 @@ impl Debug for Entry {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         unsafe {
             f.debug_struct("Entry")
-                .field("op_code", &std::ptr::read(self.0.Entries).OpCode)
-                .field("flags", &std::ptr::read(self.0.Entries).Flags)
-                .field("user_data", &std::ptr::read(self.0.Entries).UserData)
+                .field("op_code", &(& *self.0.Entries.as_ptr()).OpCode)
+                .field("flags", &(& *self.0.Entries.as_ptr()).Flags)
+                .field("user_data", &(& *self.0.Entries.as_ptr()).UserData)
                 .finish()
         }
     }

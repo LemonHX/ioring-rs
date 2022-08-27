@@ -8,7 +8,7 @@ pub mod windows;
 
 use cqueue::CompletionQueue;
 use squeue::SubmissionQueue;
-use std::{io, mem::MaybeUninit, os::windows::prelude::RawHandle};
+use std::{io, os::windows::prelude::RawHandle};
 use submit::Submitter;
 use windows::{_NT_IORING_INFO, _NT_IORING_STRUCTV1};
 
@@ -122,9 +122,9 @@ impl IoRing {
             Submitter {
                 fd: &self.handle,
                 info: &self.info,
-                sq_head: self.sq.sqes.as_ref().unwrap().Head,
-                sq_tail: self.sq.sqes.as_ref().unwrap().Tail,
-                sq_flags: self.sq.sqes.as_ref().unwrap().Flags,
+                sq_head: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Head as *const u32),
+                sq_tail: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Tail as *const u32),
+                sq_flags: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Flags as *const i32),
             }
         }
     }
@@ -136,14 +136,16 @@ impl IoRing {
     /// otherwise the queue will not be updated.
     #[inline]
     pub fn split(&mut self) -> (Submitter<'_>, SubmissionQueue<'_>, CompletionQueue<'_>) {
-        let submit = Submitter::new(
-            &self.handle,
-            &self.info,
-            self.sq.head,
-            self.sq.tail,
-            self.sq.flags,
-        );
-        (submit, self.sq.borrow(), self.cq.borrow())
+        unsafe {
+            let submit = Submitter::new(
+                &self.handle,
+                &self.info,
+                std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Head as *const _),
+                std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Tail as *const _),
+                std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Flags as *const _),
+            );
+            (submit, self.sq.borrow(), self.cq.borrow())
+        }
     }
 
     /// Get the submission queue of the io_uring instance. This is used to send I/O requests to the

@@ -1,5 +1,5 @@
 #![allow(clippy::uninit_assumed_init)]
-use std::{io, mem::MaybeUninit, os::windows::prelude::RawHandle, sync::atomic};
+use std::{io, os::windows::prelude::RawHandle, sync::atomic};
 
 use crate::{
     windows::{
@@ -83,9 +83,11 @@ impl<'a> Submitter<'a> {
         unsafe {
             let len = ((*self.info.0.__bindgen_anon_1.SubmissionQueue).Tail
                 & self.info.0.SubmissionQueueRingMask) as usize;
-            sqe = (*self.info.0.__bindgen_anon_1.SubmissionQueue)
-                .Entries
-                .as_slice(len + 1)[len];
+
+            sqe = std::slice::from_raw_parts(
+                (*self.info.0.__bindgen_anon_1.SubmissionQueue).Entries.as_mut_ptr(),
+                len + 1,
+            )[len];
             (*self.info.0.__bindgen_anon_1.SubmissionQueue).Tail += 1;
         }
         Ok(sqe)
