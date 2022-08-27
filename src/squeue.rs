@@ -1,4 +1,3 @@
-use std::cell::UnsafeCell;
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
@@ -189,9 +188,9 @@ impl Debug for Entry {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         unsafe {
             f.debug_struct("Entry")
-                .field("op_code", &(&*self.0.Entries.as_ptr()).OpCode)
-                .field("flags", &(&*self.0.Entries.as_ptr()).Flags)
-                .field("user_data", &(&*self.0.Entries.as_ptr()).UserData)
+                .field("op_code", &(*self.0.Entries.as_ptr()).OpCode)
+                .field("flags", &(*self.0.Entries.as_ptr()).Flags)
+                .field("user_data", &(*self.0.Entries.as_ptr()).UserData)
                 .finish()
         }
     }

@@ -85,7 +85,9 @@ impl<'a> Submitter<'a> {
                 & self.info.0.SubmissionQueueRingMask) as usize;
 
             sqe = std::slice::from_raw_parts(
-                (*self.info.0.__bindgen_anon_1.SubmissionQueue).Entries.as_mut_ptr(),
+                (*self.info.0.__bindgen_anon_1.SubmissionQueue)
+                    .Entries
+                    .as_mut_ptr(),
                 len + 1,
             )[len];
             (*self.info.0.__bindgen_anon_1.SubmissionQueue).Tail += 1;

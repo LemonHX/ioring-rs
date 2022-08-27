@@ -5,15 +5,18 @@ use crate::windows::{_NT_IORING_COMPLETION_QUEUE, _NT_IORING_INFO};
 pub(crate) struct Inner {
     ring_mask: u32,
     pub(crate) info: _NT_IORING_INFO,
-    cqes: *const _NT_IORING_COMPLETION_QUEUE,
+    cqes: *mut _NT_IORING_COMPLETION_QUEUE,
 }
 
 /// An io_uring instance's completion queue. This stores all the I/O operations that have completed.
 pub struct CompletionQueue<'a> {
     head: u32,
     tail: u32,
-    queue: &'a Inner,
+    queue: &'a mut Inner,
 }
+
+unsafe impl Send for CompletionQueue<'_> {}
+unsafe impl Sync for CompletionQueue<'_> {}
 
 /// An entry in the completion queue, representing a complete I/O operation.
 #[repr(transparent)]
@@ -30,7 +33,11 @@ impl Inner {
         ));
         let ring_mask = p.CompletionQueueRingMask;
         let cqes = p.__bindgen_anon_2.CompletionQueue;
-        Self { ring_mask, cqes, info: *p }
+        Self {
+            ring_mask,
+            cqes,
+            info: *p,
+        }
     }
 
     #[inline]
@@ -38,7 +45,7 @@ impl Inner {
         CompletionQueue {
             head: self.cqes.as_ref().unwrap().Head,
             tail: self.cqes.as_ref().unwrap().Tail,
-            queue: self,
+            queue: (self as *const Self as *mut Self).as_mut().unwrap(),
         }
     }
 
@@ -122,7 +129,11 @@ impl Iterator for CompletionQueue<'_> {
                     .cqes
                     .add((self.head & self.queue.ring_mask) as usize)
             };
-            self.head = self.head.wrapping_add(1);
+            unsafe {
+                let cqe = &mut *self.queue.cqes;
+                cqe.Head = cqe.Head.wrapping_add(1);
+            }
+            self.sync();
             Some(Entry(entry))
         } else {
             None
@@ -147,7 +158,15 @@ impl Entry {
     /// operation this is equivalent to the return value of the `read(2)` system call.
     #[inline]
     pub fn result(&self) -> i32 {
-        unsafe { self.0.Entries.as_ptr().as_ref().unwrap().__bindgen_anon_1.ResultCode as _ }
+        unsafe {
+            self.0
+                .Entries
+                .as_ptr()
+                .as_ref()
+                .unwrap()
+                .__bindgen_anon_1
+                .ResultCode as _
+        }
     }
     /// The user data of the request, as set by
     /// [`Entry::user_data`](crate::squeue::Entry::user_data) on the submission queue event.
