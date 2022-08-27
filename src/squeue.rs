@@ -1,9 +1,8 @@
+use std::cell::UnsafeCell;
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
-use crate::windows::{
-    _NT_IORING_INFO, _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE,
-};
+use crate::windows::{_NT_IORING_INFO, _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE};
 
 pub(crate) struct Inner {
     pub(crate) ring_mask: u32,
@@ -14,8 +13,10 @@ pub(crate) struct Inner {
 pub struct SubmissionQueue<'a> {
     head: u32,
     tail: u32,
-    queue: &'a Inner,
+    queue: &'a mut Inner,
 }
+unsafe impl Send for SubmissionQueue<'_> {}
+unsafe impl Sync for SubmissionQueue<'_> {}
 
 /// An entry in the submission queue, representing a request for an I/O operation.
 ///
@@ -56,7 +57,7 @@ impl Inner {
         SubmissionQueue {
             head: self.sqes.as_ref().unwrap().Head,
             tail: self.sqes.as_ref().unwrap().Tail,
-            queue: self,
+            queue: (self as *const Self as *mut Self).as_mut().unwrap(),
         }
     }
 
@@ -119,7 +120,9 @@ impl SubmissionQueue<'_> {
                 .queue
                 .sqes
                 .add((self.tail & self.queue.ring_mask) as usize) = *entry;
-            self.tail = self.tail.wrapping_add(1);
+            self.queue.sqes.as_mut().unwrap().Tail =
+                self.queue.sqes.as_mut().unwrap().Tail.wrapping_add(1);
+            self.sync();
             Ok(())
         } else {
             Err(PushError)
@@ -186,9 +189,9 @@ impl Debug for Entry {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         unsafe {
             f.debug_struct("Entry")
-                .field("op_code", &(& *self.0.Entries.as_ptr()).OpCode)
-                .field("flags", &(& *self.0.Entries.as_ptr()).Flags)
-                .field("user_data", &(& *self.0.Entries.as_ptr()).UserData)
+                .field("op_code", &(&*self.0.Entries.as_ptr()).OpCode)
+                .field("flags", &(&*self.0.Entries.as_ptr()).Flags)
+                .field("user_data", &(&*self.0.Entries.as_ptr()).UserData)
                 .finish()
         }
     }

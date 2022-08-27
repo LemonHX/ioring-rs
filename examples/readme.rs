@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
             .expect("submission queue is full");
     }
 
-    ring.submit_and_wait(10000)?;
+    ring.submit_and_wait(10)?;
 
     let cqe = ring.completion().next().expect("completion queue is empty");
 
