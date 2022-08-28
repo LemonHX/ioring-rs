@@ -1,7 +1,9 @@
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
-use crate::windows::{_NT_IORING_INFO, _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE,_NT_IORING_SQ_FLAGS};
+use crate::windows::{
+    _NT_IORING_INFO, _NT_IORING_SQE_FLAGS, _NT_IORING_SQ_FLAGS, _NT_IORING_SUBMISSION_QUEUE,
+};
 
 pub(crate) struct Inner {
     pub(crate) ring_mask: u32,

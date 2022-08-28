@@ -112,8 +112,8 @@ impl IoRing {
     /// Initiate and/or complete asynchronous I/O. See [`Submitter::submit_and_wait`] for more
     /// details.
     #[inline]
-    pub fn submit_and_wait(&self, want: usize) -> io::Result<usize> {
-        self.submitter().submit_and_wait(std::u32::MAX, want)
+    pub fn submit_and_wait(&self, want: u32) -> io::Result<usize> {
+        self.submitter().submit_and_wait(want, std::usize::MAX)
     }
 
     #[inline]

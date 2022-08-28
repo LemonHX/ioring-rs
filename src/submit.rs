@@ -47,7 +47,7 @@ impl<'a> Submitter<'a> {
     /// Submit all queued submission queue events to the kernel.
     #[inline]
     pub fn submit(&self) -> io::Result<usize> {
-        self.submit_and_wait(std::u32::MAX, 0)
+        self.submit_and_wait(1, std::usize::MAX)
     }
 
     /// Submit all queued submission queue events to the kernel and wait for at least `want`
@@ -58,7 +58,7 @@ impl<'a> Submitter<'a> {
                 *self.fd,
                 _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
                 number_of_entries,
-                if number_of_entries == 0 || want == std::usize::MAX {
+                if number_of_entries == 0 {
                     &mut { std::mem::zeroed() }
                 } else {
                     &mut (want as u64)

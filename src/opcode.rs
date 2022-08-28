@@ -127,12 +127,15 @@ opcode!(
 
         unsafe {
             let mut sqe = sqe_zeroed();
+            dbg!(sqe.Entries.as_mut_ptr());
             sqe.Entries.as_mut_ptr().as_mut().unwrap().OpCode =  Self::CODE;
-            sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.Read. CommonOpFlags = common_op_flags;
+            sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.Read.CommonOpFlags = common_op_flags;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.Read.File =file;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.Read.Buffer =buffer;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.Read.Offset = file_offset;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.Read.Length =size_to_read;
+            dbg!(sqe.Entries.as_mut_ptr());
+
             dbg!(sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.Read. CommonOpFlags);
             dbg!(common_op_flags);
             dbg!(sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.Read.File);
@@ -168,11 +171,15 @@ opcode!(
 
          unsafe{
             let mut sqe = sqe_zeroed();
+            dbg!(sqe.Entries.as_mut_ptr());
+
             sqe.Entries.as_mut_ptr().as_mut().unwrap().OpCode =  Self::CODE;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.RegisterFiles.__bindgen_anon_1.Handles = handles as * mut _;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.RegisterFiles.CommonOpFlags =common_op_flags;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.RegisterFiles.Count = count;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.RegisterFiles.Flags = flags;
+            dbg!(sqe.Entries.as_mut_ptr());
+
             dbg!(sqe.Entries.as_ptr().as_ref().unwrap().__bindgen_anon_1.RegisterFiles.Flags);
             dbg!(sqe.Entries.as_ptr().as_ref().unwrap().__bindgen_anon_1.RegisterFiles.CommonOpFlags);
             dbg!(common_op_flags);
@@ -209,11 +216,15 @@ opcode!(
          } = self;
          unsafe {
             let mut sqe = sqe_zeroed();
+            dbg!(sqe.Entries.as_mut_ptr());
+
             sqe.Entries.as_mut_ptr().as_mut().unwrap().OpCode =  Self::CODE;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.RegisterFiles.__bindgen_anon_1.Handles = handles as * mut _;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.RegisterFiles.CommonOpFlags =common_op_flags;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.RegisterFiles.Count = count;
             sqe.Entries.as_mut_ptr().as_mut().unwrap().__bindgen_anon_1.RegisterFiles.Flags = flags;
+            dbg!(sqe.Entries.as_mut_ptr());
+
             Entry(sqe)
          }
     }

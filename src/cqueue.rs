@@ -132,7 +132,6 @@ impl Iterator for CompletionQueue<'_> {
                     .queue
                     .cqes
                     .add((self.head & self.queue.ring_mask) as usize)
-                    // .add(0)
             };
             self.sync();
             Some(Entry(entry))
@@ -173,19 +172,22 @@ impl Entry {
     /// [`Entry::user_data`](crate::squeue::Entry::user_data) on the submission queue event.
     #[inline]
     pub fn user_data(&self) -> usize {
+        dbg!(self.0.Entries.as_ptr());
         unsafe {
-        dbg!(self.0.Entries.as_ptr().as_ref().unwrap().Information);
-        dbg!(self.0.Entries.as_ptr().as_ref().unwrap().UserData);
-        dbg!(
-            self.0
-                .Entries
-                .as_ptr()
-                .as_ref()
-                .unwrap()
-                .__bindgen_anon_1
-                .ResultCode
-        );
-         self.0.Entries.as_ptr().as_ref().unwrap().UserData as _ }
+            dbg!(self.0.Entries.as_ptr().as_ref().unwrap().Information);
+            dbg!(self.0.Entries.as_ptr().as_ref().unwrap().UserData);
+            dbg!(
+                self.0
+                    .Entries
+                    .as_ptr()
+                    .as_ref()
+                    .unwrap()
+                    .__bindgen_anon_1
+                    .ResultCode
+            );
+            dbg!(self.0.Entries.as_ptr());
+            self.0.Entries.as_ptr().as_ref().unwrap().UserData as _
+        }
     }
 
     /// Metadata related to the operation.
