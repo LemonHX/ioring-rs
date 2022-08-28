@@ -1,6 +1,6 @@
 use std::{fmt, sync::atomic};
 
-use crate::windows::{_NT_IORING_COMPLETION_QUEUE, _NT_IORING_INFO};
+use crate::windows::{_NT_IORING_COMPLETION_QUEUE, _NT_IORING_INFO, _NT_IORING_CQE};
 
 pub(crate) struct Inner {
     ring_mask: u32,
@@ -117,24 +117,21 @@ impl CompletionQueue<'_> {
 // }
 
 impl Iterator for CompletionQueue<'_> {
-    type Item = Entry;
+    type Item = _NT_IORING_CQE;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.sync();
         if self.head != self.tail {
             let entry = unsafe {
-                *self
-                    .queue
-                    .cqes
-                    .add((self.head & self.queue.ring_mask) as usize)
-            };
-            unsafe {
                 let cqe = &mut *self.queue.cqes;
                 cqe.Head = cqe.Head.wrapping_add(1);
-            }
+                
+                let entry = cqe.Entries.as_mut_ptr().add(cqe.Head  as usize & self.queue.ring_mask as usize);
+                *entry
+            };
             self.sync();
-            Some(Entry(entry))
+            Some(entry)
         } else {
             None
         }
