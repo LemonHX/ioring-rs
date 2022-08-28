@@ -32,7 +32,8 @@ fn main() -> io::Result<()> {
     ring.submit_and_wait(10)?;
     let mut cqe = ring.completion().next().unwrap();
     assert!(cqe.result() >= 0, "read error: {}", cqe.result());
-    assert_eq!(cqe.user_data(), 140);
+    dbg!(cqe.user_data());
+    dbg!(cqe.information());
 
     let entry_reg_buf = opcode::RegisterBuffers::new(
         buf.as_ptr() as _,
@@ -53,6 +54,8 @@ fn main() -> io::Result<()> {
     ring.submit_and_wait(10)?;
     cqe = ring.completion().next().unwrap();
     assert!(cqe.result() == 0, "read error: {}", cqe.result());
+    dbg!(cqe.user_data());
+    dbg!(cqe.information());
 
     let entry_read = opcode::Read::new(
         _NT_IORING_HANDLEREF {
@@ -77,6 +80,8 @@ fn main() -> io::Result<()> {
 
     cqe = ring.completion().next().expect("completion queue is empty");
     dbg!(buf);
+    dbg!(cqe.user_data());
+    dbg!(cqe.information());
 
     assert_eq!(cqe.user_data(), 100);
     assert!(cqe.result() == 0, "read error: {}", cqe.result());

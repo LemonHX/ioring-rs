@@ -125,7 +125,7 @@ impl IoRing {
                 info: &self.info,
                 sq_head: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Head as *const u32),
                 sq_tail: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Tail as *const u32),
-                sq_flags: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Flags as *const i64),
+                sq_flags: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Flags as *const i32),
             }
         }
     }
