@@ -201,7 +201,7 @@ pub const FILE_FLUSH_MODE_FILE_FLUSH_MIN_METADATA: FILE_FLUSH_MODE = 2;
 pub const FILE_FLUSH_MODE_FILE_FLUSH_NO_SYNC: FILE_FLUSH_MODE = 3;
 pub type FILE_FLUSH_MODE = ::std::os::raw::c_int;
 #[repr(C)]
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone)]
 pub struct __IncompleteArrayField<T>(::std::marker::PhantomData<T>, [T; 0]);
 impl<T> __IncompleteArrayField<T> {
     #[inline]
@@ -1962,7 +1962,7 @@ pub const _NT_IORING_SQ_FLAGS_NT_IORING_SQ_FLAG_NONE: _NT_IORING_SQ_FLAGS = 0;
 pub type _NT_IORING_SQ_FLAGS = ::std::os::raw::c_int;
 pub use self::_NT_IORING_SQ_FLAGS as NT_IORING_SQ_FLAGS;
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct _NT_IORING_SUBMISSION_QUEUE {
     pub Head: u32,
     pub Tail: u32,
@@ -2112,7 +2112,7 @@ fn bindgen_test_layout__NT_IORING_CQE() {
 pub type NT_IORING_CQE = _NT_IORING_CQE;
 pub type PNT_IORING_CQE = *mut _NT_IORING_CQE;
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct _NT_IORING_COMPLETION_QUEUE {
     pub Head: u32,
     pub Tail: u32,
