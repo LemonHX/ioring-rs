@@ -16,7 +16,7 @@ pub struct Submitter<'a> {
     pub(crate) info: &'a Info,
     pub(crate) sq_head: *const atomic::AtomicU32,
     pub(crate) sq_tail: *const atomic::AtomicU32,
-    pub(crate) sq_flags: *const atomic::AtomicI32,
+    pub(crate) sq_flags: *const atomic::AtomicI64,
 }
 
 impl<'a> Submitter<'a> {
@@ -25,7 +25,7 @@ impl<'a> Submitter<'a> {
         info: &'a Info,
         sq_head: *const atomic::AtomicU32,
         sq_tail: *const atomic::AtomicU32,
-        sq_flags: *const atomic::AtomicI32,
+        sq_flags: *const atomic::AtomicI64,
     ) -> Submitter<'a> {
         Submitter {
             fd,
@@ -47,7 +47,7 @@ impl<'a> Submitter<'a> {
     /// Submit all queued submission queue events to the kernel.
     #[inline]
     pub fn submit(&self) -> io::Result<usize> {
-        self.submit_and_wait(1, std::usize::MAX)
+        self.submit_and_wait(1, std::u32::MAX as usize)
     }
 
     /// Submit all queued submission queue events to the kernel and wait for at least `want`

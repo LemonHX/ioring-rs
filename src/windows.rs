@@ -1959,7 +1959,7 @@ fn bindgen_test_layout__NT_IORING_CREATE_FLAGS() {
 }
 pub type NT_IORING_CREATE_FLAGS = _NT_IORING_CREATE_FLAGS;
 pub const _NT_IORING_SQ_FLAGS_NT_IORING_SQ_FLAG_NONE: _NT_IORING_SQ_FLAGS = 0;
-pub type _NT_IORING_SQ_FLAGS = ::std::os::raw::c_int;
+pub type _NT_IORING_SQ_FLAGS = ::std::os::raw::c_longlong;
 pub use self::_NT_IORING_SQ_FLAGS as NT_IORING_SQ_FLAGS;
 #[repr(C)]
 #[derive(Copy, Clone)]

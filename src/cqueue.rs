@@ -123,16 +123,16 @@ impl Iterator for CompletionQueue<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         self.sync();
         if self.head != self.tail {
-            unsafe {
-                let cqe = &mut *self.queue.cqes;
-                cqe.Head = cqe.Head.wrapping_add(1);
-            }
             let entry = unsafe {
                 *self
                     .queue
                     .cqes
-                    .add((self.head & self.queue.ring_mask) as usize)
+                    .add((self.head & self.queue.info.CompletionQueueRingMask) as usize)
             };
+            unsafe {
+                let cqe = &mut *self.queue.cqes;
+                cqe.Head = cqe.Head.wrapping_add(1);
+            }
             self.sync();
             Some(Entry(entry))
         } else {
@@ -172,22 +172,7 @@ impl Entry {
     /// [`Entry::user_data`](crate::squeue::Entry::user_data) on the submission queue event.
     #[inline]
     pub fn user_data(&self) -> usize {
-        dbg!(self.0.Entries.as_ptr());
-        unsafe {
-            dbg!(self.0.Entries.as_ptr().as_ref().unwrap().Information);
-            dbg!(self.0.Entries.as_ptr().as_ref().unwrap().UserData);
-            dbg!(
-                self.0
-                    .Entries
-                    .as_ptr()
-                    .as_ref()
-                    .unwrap()
-                    .__bindgen_anon_1
-                    .ResultCode
-            );
-            dbg!(self.0.Entries.as_ptr());
-            self.0.Entries.as_ptr().as_ref().unwrap().UserData as _
-        }
+        unsafe { self.0.Entries.as_ptr().as_ref().unwrap().UserData as _ }
     }
 
     /// Metadata related to the operation.

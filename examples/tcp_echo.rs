@@ -1,8 +1,8 @@
+use ioring_rs::{opcode, squeue, IoRing};
+use slab::Slab;
 use std::collections::VecDeque;
 use std::net::TcpListener;
 use std::{io, os::windows::prelude::RawHandle};
-use ioring_rs::{opcode, squeue, IoRing};
-use slab::Slab;
 
 #[derive(Clone, Debug)]
 enum Token {
@@ -21,6 +21,4 @@ enum Token {
         len: usize,
     },
 }
-fn main(){
-    
-}
+fn main() {}

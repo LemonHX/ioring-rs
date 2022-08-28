@@ -121,7 +121,7 @@ impl SubmissionQueue<'_> {
             *self
                 .queue
                 .sqes
-                .add((self.tail & self.queue.ring_mask) as usize) = *entry;
+                .add((self.tail & self.queue.info.SubmissionQueueRingMask) as usize) = *entry;
             self.queue.sqes.as_mut().unwrap().Tail =
                 self.queue.sqes.as_mut().unwrap().Tail.wrapping_add(1);
             self.sync();
@@ -172,13 +172,7 @@ impl Entry {
     pub fn user_data(mut self, user_data: u64) -> Entry {
         unsafe {
             self.0.Entries.as_mut_ptr().as_mut().unwrap().UserData = user_data;
-            dbg!(self.0.Entries.as_mut_ptr().as_mut().unwrap().UserData);
-            dbg!(self.0.Entries.as_mut_ptr().as_mut().unwrap().OpCode);
         }
-        dbg!(self.0.Head);
-        dbg!(self.0.Tail);
-        dbg!(self.0.Flags);
-        dbg!(std::mem::size_of::<_NT_IORING_SQ_FLAGS>());
         self
     }
 

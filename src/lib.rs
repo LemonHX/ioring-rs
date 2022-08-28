@@ -113,7 +113,8 @@ impl IoRing {
     /// details.
     #[inline]
     pub fn submit_and_wait(&self, want: u32) -> io::Result<usize> {
-        self.submitter().submit_and_wait(want, std::usize::MAX)
+        self.submitter()
+            .submit_and_wait(want, std::u32::MAX as usize)
     }
 
     #[inline]
@@ -124,7 +125,7 @@ impl IoRing {
                 info: &self.info,
                 sq_head: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Head as *const u32),
                 sq_tail: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Tail as *const u32),
-                sq_flags: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Flags as *const i32),
+                sq_flags: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Flags as *const i64),
             }
         }
     }
