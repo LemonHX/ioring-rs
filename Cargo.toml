@@ -8,3 +8,6 @@ version = "0.1.0"
 
 [dependencies]
 slab="0.4.7"
+
+[build-dependencies]
+cmake = "0.1"

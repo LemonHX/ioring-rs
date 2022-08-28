@@ -121,28 +121,12 @@ impl Iterator for CompletionQueue<'_> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.sync();
-        if self.head != self.tail {
-            let entry = unsafe {
-                *self
-                    .queue
-                    .cqes
-                    .add((self.head & self.queue.info.CompletionQueueRingMask) as usize)
-            };
-            unsafe {
-                let cqe = &mut *self.queue.cqes;
-                cqe.Head = cqe.Head.wrapping_add(1);
-            }
-            self.sync();
-            Some(Entry(entry))
-        } else {
-            None
-        }
+       todo!()
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.len(), Some(self.len()))
+       todo!()
     }
 }
 

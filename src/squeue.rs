@@ -5,12 +5,6 @@ use crate::windows::{
     _NT_IORING_INFO, _NT_IORING_SQE_FLAGS, _NT_IORING_SQ_FLAGS, _NT_IORING_SUBMISSION_QUEUE,
 };
 
-pub(crate) struct Inner {
-    pub(crate) ring_mask: u32,
-    pub(crate) info: _NT_IORING_INFO,
-    pub(crate) sqes: *mut _NT_IORING_SUBMISSION_QUEUE,
-}
-
 pub struct SubmissionQueue<'a> {
     head: u32,
     tail: u32,

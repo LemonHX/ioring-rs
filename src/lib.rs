@@ -4,19 +4,11 @@ pub mod squeue;
 pub mod cqueue;
 pub mod opcode;
 pub mod submit;
-pub mod windows;
 
 use cqueue::CompletionQueue;
 use squeue::SubmissionQueue;
 use std::{io, os::windows::prelude::RawHandle};
 use submit::Submitter;
-use windows::{_NT_IORING_INFO, _NT_IORING_STRUCTV1};
-
-use crate::windows::{
-    NtCreateIoRing, _IORING_VERSION_IORING_VERSION_3,
-    _NT_IORING_CREATE_ADVISORY_FLAGS_NT_IORING_CREATE_ADVISORY_FLAG_NONE, _NT_IORING_CREATE_FLAGS,
-    _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
-};
 
 pub struct IoRing {
     sq: squeue::Inner,
@@ -25,11 +17,9 @@ pub struct IoRing {
     handle: RawHandle,
 }
 
-/// IoRing build info
-#[derive(Clone, Default)]
-pub struct Builder {
-    dontfork: bool,
-    info: _NT_IORING_INFO,
+extern "C" {
+    fn win_ring_cpp(entries: u32)-> *mut c_void;
+    fn destory_win_ring_cpp();
 }
 
 /// The Info that were used to construct an [`IoRing`].
@@ -49,36 +39,8 @@ impl IoRing {
         IoRing::with_params(entries, Default::default())
     }
 
-    /// Create a [`Builder`] for an `IoUring` instance.
-    ///
-    /// This allows for further customization than [`new`](Self::new).
-    #[must_use]
-    pub fn builder() -> Builder {
-        Builder {
-            dontfork: false,
-            info: _NT_IORING_INFO::default(),
-        }
-    }
     fn with_params(entries: u32, mut p: _NT_IORING_INFO) -> std::io::Result<IoRing> {
-        let mut handle: RawHandle = unsafe { std::mem::zeroed() };
-        let mut ioring_struct = _NT_IORING_STRUCTV1 {
-            IoRingVersion: _IORING_VERSION_IORING_VERSION_3,
-            SubmissionQueueSize: entries,
-            CompletionQueueSize: entries * 2,
-            Flags: _NT_IORING_CREATE_FLAGS {
-                Required: _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
-                Advisory: _NT_IORING_CREATE_ADVISORY_FLAGS_NT_IORING_CREATE_ADVISORY_FLAG_NONE,
-            },
-        };
-        let res = unsafe {
-            NtCreateIoRing(
-                &mut handle,
-                std::mem::size_of::<_NT_IORING_STRUCTV1>() as u32,
-                &mut ioring_struct,
-                std::mem::size_of::<_NT_IORING_INFO>() as u32,
-                &mut p,
-            )
-        };
+        
         dbg!(res);
         #[inline]
         unsafe fn setup_queue(p: &_NT_IORING_INFO) -> io::Result<(squeue::Inner, cqueue::Inner)> {
