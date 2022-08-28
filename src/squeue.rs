@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
-use crate::windows::{_NT_IORING_INFO, _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE};
+use crate::windows::{_NT_IORING_INFO, _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE,_NT_IORING_SQ_FLAGS};
 
 pub(crate) struct Inner {
     pub(crate) ring_mask: u32,
@@ -114,6 +114,7 @@ impl SubmissionQueue<'_> {
     /// be valid for the entire duration of the operation, otherwise it may cause memory problems.
     #[inline]
     pub unsafe fn push(&mut self, Entry(entry): &Entry) -> Result<(), PushError> {
+        self.sync();
         if !self.is_full() {
             *self
                 .queue
@@ -158,7 +159,7 @@ impl SubmissionQueue<'_> {
 impl Entry {
     /// Set the submission event's [flags](Flags).
     #[inline]
-    pub fn flags(mut self, flags: _NT_IORING_SQE_FLAGS) -> Entry {
+    pub fn flags(mut self, flags: _NT_IORING_SQ_FLAGS) -> Entry {
         self.0.Flags = flags;
         self
     }
@@ -169,7 +170,13 @@ impl Entry {
     pub fn user_data(mut self, user_data: u64) -> Entry {
         unsafe {
             self.0.Entries.as_mut_ptr().as_mut().unwrap().UserData = user_data;
+            dbg!(self.0.Entries.as_mut_ptr().as_mut().unwrap().UserData);
+            dbg!(self.0.Entries.as_mut_ptr().as_mut().unwrap().OpCode);
         }
+        dbg!(self.0.Head);
+        dbg!(self.0.Tail);
+        dbg!(self.0.Flags);
+        dbg!(std::mem::size_of::<_NT_IORING_SQ_FLAGS>());
         self
     }
 
