@@ -29,7 +29,7 @@ fn main() -> io::Result<()> {
             .expect("submission queue is full");
     }
 
-    ring.submit_and_wait(10)?;
+    ring.submit_and_wait(1)?;
     let mut cqe = ring.completion().next().unwrap();
     assert!(cqe.result() >= 0, "read error: {}", cqe.result());
     dbg!(cqe.user_data());
@@ -51,7 +51,7 @@ fn main() -> io::Result<()> {
             .push(&entry_reg_buf)
             .expect("submission queue is full");
     }
-    ring.submit_and_wait(10)?;
+    ring.submit_and_wait(1)?;
     cqe = ring.completion().next().unwrap();
     assert!(cqe.result() == 0, "read error: {}", cqe.result());
     dbg!(cqe.user_data());
@@ -76,7 +76,7 @@ fn main() -> io::Result<()> {
             .push(&entry_read)
             .expect("submission queue is full");
     }
-    ring.submit_and_wait(10)?;
+    ring.submit_and_wait(1)?;
 
     cqe = ring.completion().next().expect("completion queue is empty");
     dbg!(buf);

@@ -343,7 +343,7 @@ NtSubmitIoRing(
 );
 
 __kernel_entry extern NTSTATUS NTAPI
-NtCre2teIoRing(
+NtCreateIoRing(
     _Out_ PHANDLE pIoRingHandle,
     _In_ uint32_t CreateParametersSize,
     _In_ PNT_IORING_STRUCTV1 CreateParameters,
