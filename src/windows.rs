@@ -2129,7 +2129,7 @@ fn bindgen_test_layout__NT_IORING_COMPLETION_QUEUE() {
 pub type NT_IORING_COMPLETION_QUEUE = _NT_IORING_COMPLETION_QUEUE;
 pub type PNT_IORING_COMPLETION_QUEUE = *mut _NT_IORING_COMPLETION_QUEUE;
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct _NT_IORING_INFO {
     pub IoRingVersion: IORING_VERSION,
     pub Flags: NT_IORING_CREATE_FLAGS,
@@ -2162,6 +2162,11 @@ impl Default for _NT_IORING_INFO {
 pub union _NT_IORING_INFO__bindgen_ty_1 {
     pub SubmissionQueue: *mut NT_IORING_SUBMISSION_QUEUE,
     pub PadX86_SubmissionQueue: u64,
+}
+impl ::std::fmt::Debug for _NT_IORING_INFO__bindgen_ty_1 {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        fmt.write_str("_NT_IORING_INFO__bindgen_ty_1")
+    }
 }
 #[test]
 fn bindgen_test_layout__NT_IORING_INFO__bindgen_ty_1() {
@@ -2215,6 +2220,11 @@ fn bindgen_test_layout__NT_IORING_INFO__bindgen_ty_1() {
 pub union _NT_IORING_INFO__bindgen_ty_2 {
     pub CompletionQueue: *mut NT_IORING_COMPLETION_QUEUE,
     pub PadX86_CompletionQueue: u64,
+}
+impl ::std::fmt::Debug for _NT_IORING_INFO__bindgen_ty_2 {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        fmt.write_str("_NT_IORING_INFO__bindgen_ty_2")
+    }
 }
 #[test]
 fn bindgen_test_layout__NT_IORING_INFO__bindgen_ty_2() {
@@ -5953,7 +5963,7 @@ pub type PWINSTATIONQUERYINFORMATIONW = ::std::option::Option<
     ) -> BOOLEAN,
 >;
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct win_ring {
     pub info: NT_IORING_INFO,
     pub handle: HANDLE,

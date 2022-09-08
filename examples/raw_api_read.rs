@@ -1,7 +1,7 @@
 use ioring_rs::windows::{
     win_ring, win_ring_cqe_iter, win_ring_get_sqe, win_ring_prep_read,
-    win_ring_prep_register_buffers, win_ring_queue_exit, win_ring_queue_init,
-    win_ring_sqe_set_data64, win_ring_submit_and_wait, IORING_BUFFER_INFO,
+    win_ring_prep_register_buffers, win_ring_prep_register_files, win_ring_queue_exit,
+    win_ring_queue_init, win_ring_sqe_set_data64, win_ring_submit_and_wait, IORING_BUFFER_INFO,
     IORING_REGISTERED_BUFFER, _NT_IORING_BUFFERREF, _NT_IORING_HANDLEREF,
     _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_NONE,
     _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_REGISTERED_BUFFER,
@@ -48,7 +48,19 @@ fn main() -> std::io::Result<()> {
         );
         win_ring_sqe_set_data64(ring_sqe, 140);
         win_ring_submit_and_wait(&mut ring, 1);
-        clear_cqes(&mut ring, "register")?;
+        clear_cqes(&mut ring, "register buffr")?;
+
+        let mut ring_sqe = win_ring_get_sqe(&mut ring);
+        win_ring_prep_register_files(
+            ring_sqe,
+            f.as_raw_handle() as _,
+            1,
+            std::mem::zeroed(),
+            _NT_IORING_REG_FILES_REQ_FLAGS_NT_IORING_REG_FILES_REQ_FLAG_NONE,
+        );
+        win_ring_sqe_set_data64(ring_sqe, 140);
+        win_ring_submit_and_wait(&mut ring, 1);
+        clear_cqes(&mut ring, "register file")?;
 
         for x in 0..2 {
             ring_sqe = win_ring_get_sqe(&mut ring);
@@ -88,7 +100,7 @@ fn main() -> std::io::Result<()> {
         win_ring_submit_and_wait(&mut ring, 1);
 
         clear_cqes(&mut ring, "read")?;
-        dbg!(buf4normal,buf4fixed);
+        dbg!(buf4normal, buf4fixed);
         win_ring_queue_exit(&mut ring);
 
         Ok(())

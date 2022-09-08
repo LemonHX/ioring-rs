@@ -8,7 +8,7 @@ fn main() {
     // #include "libwinring.h"
     //     "#;
     //     let outdir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("src");
-    
+
     //     bindgen::Builder::default()
     //     .header_contents("include-file.h", INCLUDE)
     //     .clang_arg("-I./libwinring/include/")
@@ -68,9 +68,12 @@ fn main() {
     //         .unwrap()
     //         .write_to_file(outdir.join("windows.rs"))
     //         .unwrap();
-    let winring = Config::new("libwinring").build_target("ALL_BUILD"). build();
+    let winring = Config::new("libwinring").build_target("ALL_BUILD").build();
 
-    println!("cargo:rustc-link-search=native={}/build/Debug", winring.display());
+    println!(
+        "cargo:rustc-link-search=native={}/build/Debug",
+        winring.display()
+    );
     println!("cargo:rustc-link-lib=dylib=winring");
 
     println!("cargo:rustc-link-lib=dylib=ntdll");

@@ -253,7 +253,6 @@ win_ring_cqe *win_ring_cqe_iter(_Inout_ win_ring *ring, _In_ uint32_t head) {
               ->Entries[head & ring->info.CompletionQueueRingMask];
 }
 
-
 #ifdef __cplusplus
 }
 #endif

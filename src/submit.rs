@@ -3,8 +3,8 @@ use std::{io, os::windows::prelude::RawHandle, sync::atomic};
 
 use crate::{
     windows::{
-        NtSubmitIoRing, _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
-        _NT_IORING_SQE,
+        win_ring_sq_space_left, NtSubmitIoRing,
+        _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE, _NT_IORING_SQE,
     },
     Info,
 };
@@ -81,22 +81,22 @@ impl<'a> Submitter<'a> {
         }
         let sqe;
         unsafe {
-            let len = ((*self.info.0.__bindgen_anon_1.SubmissionQueue).Tail
-                & self.info.0.SubmissionQueueRingMask) as usize;
+            let len = ((*(*self.info.0).info.__bindgen_anon_1.SubmissionQueue).Tail
+                & (*self.info.0).info.SubmissionQueueRingMask) as usize;
 
             sqe = std::slice::from_raw_parts(
-                (*self.info.0.__bindgen_anon_1.SubmissionQueue)
+                (*(*self.info.0).info.__bindgen_anon_1.SubmissionQueue)
                     .Entries
                     .as_mut_ptr(),
                 len + 1,
             )[len];
-            (*self.info.0.__bindgen_anon_1.SubmissionQueue).Tail += 1;
+            (*(*self.info.0).info.__bindgen_anon_1.SubmissionQueue).Tail += 1;
         }
         Ok(sqe)
     }
     /// Get the buffer space left in the sqe ring
-    pub fn sq_space_left(&self) -> usize {
-        self.info.0.SubmissionQueueSize as usize - self.sq_len()
+    pub fn sq_space_left(&self) -> u32 {
+        unsafe { win_ring_sq_space_left(self.info.0) }
     }
 
     /// Register in-memory user buffers for I/O with the kernel. You can use these buffers with the
