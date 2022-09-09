@@ -17,12 +17,12 @@ use windows::{
 pub struct IoRing {
     sq: squeue::Inner,
     cq: cqueue::Inner,
-    info: Info,
+    pub info: Info,
 }
 
 /// The Info that were used to construct an [`IoRing`].
 #[derive(Clone)]
-pub struct Info(*mut win_ring);
+pub struct Info(pub *mut win_ring);
 
 unsafe impl Send for IoRing {}
 unsafe impl Sync for IoRing {}
