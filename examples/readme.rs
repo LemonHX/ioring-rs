@@ -6,9 +6,9 @@ use ioring_rs::{opcode, IoRing};
 use std::{fs, io, os::windows::prelude::AsRawHandle};
 
 fn main() -> io::Result<()> {
+    let f = fs::File::open("test.txt")?;
     let mut ring = IoRing::new(32)?;
     let mut buf = [0u8; 32];
-    let f = fs::File::open("test.txt")?;
     let commonopflags = _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_NONE;
 
     let entry_reg_file = opcode::RegisterFiles::new(
@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
 
     ring.submit_and_wait(1)?;
     let mut cqe = ring.completion().next().unwrap();
-    assert!(cqe.result() >= 0, "read error: {}", cqe.result());
+    // assert!(cqe.result() >= 0, "read error: {}", cqe.result());
     dbg!(cqe.user_data());
     dbg!(cqe.information());
 
@@ -55,7 +55,7 @@ fn main() -> io::Result<()> {
     }
     ring.submit_and_wait(1)?;
     cqe = ring.completion().next().unwrap();
-    assert!(cqe.result() == 0, "read error: {}", cqe.result());
+    // assert!(cqe.result() == 0, "read error: {}", cqe.result());
     dbg!(cqe.user_data());
     dbg!(cqe.information());
 

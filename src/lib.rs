@@ -10,51 +10,40 @@ use cqueue::CompletionQueue;
 use squeue::SubmissionQueue;
 use std::{io, os::windows::prelude::RawHandle};
 use submit::Submitter;
-use windows::{
-    win_ring, win_ring_queue_init, _NT_IORING_INFO, _NT_IORING_SQE_FLAGS, _NT_IORING_SQ_FLAGS,
-};
+use windows::{win_ring, win_ring_queue_exit, win_ring_queue_init, win_ring_queue_init_ref};
 
-pub struct IoRing {
+pub struct IoRing<'a> {
     sq: squeue::Inner,
     cq: cqueue::Inner,
-    pub info: Info,
+    pub info: Info<'a>,
 }
 
 /// The Info that were used to construct an [`IoRing`].
-#[derive(Clone)]
-pub struct Info(pub *mut win_ring);
+// #[derive(Clone)]
+pub struct Info<'a>(pub &'a mut win_ring);
 
-unsafe impl Send for IoRing {}
-unsafe impl Sync for IoRing {}
+unsafe impl<'a> Send for IoRing<'a> {}
+unsafe impl<'a> Sync for IoRing<'a> {}
 
-impl IoRing {
+impl<'a> IoRing<'a> {
     /// Create a new `IoRing` instance with default configuration parameters. See [`Builder`] to
     /// customize it further.
     ///
     /// The `entries` sets the size of queue,
     /// and its value should be the power of two.
-    pub fn new(entries: u32) -> std::io::Result<IoRing> {
-        let mut ring: win_ring = unsafe { std::mem::zeroed() };
-        unsafe {
-            win_ring_queue_init(entries, &mut ring);
-        }
-        IoRing::with_params(entries, &mut ring)
-    }
-
-    fn with_params(entries: u32, mut p: *mut win_ring) -> std::io::Result<IoRing> {
-        #[inline]
+    pub fn new(entries: u32) -> std::io::Result<IoRing<'a>> {
+        let ring = unsafe { win_ring_queue_init_ref(entries) };
         unsafe fn setup_queue(p: *mut win_ring) -> io::Result<(squeue::Inner, cqueue::Inner)> {
             let sq = squeue::Inner::new(p);
             let cq = cqueue::Inner::new(p);
 
             Ok((sq, cq))
         }
-
-        let (sq, cq) = unsafe { setup_queue(p)? };
+        let (sq, cq) = unsafe { setup_queue(ring)? };
         Ok(IoRing {
             sq,
             cq,
-            info: Info(p),
+            info: Info(unsafe { &mut *ring }),
         })
     }
 
@@ -140,7 +129,16 @@ impl IoRing {
     ///
     /// No other [`CompletionQueue`]s may exist when calling this function.
     #[inline]
-    pub unsafe fn completion_shared(&self) -> CompletionQueue<'_> {
+    pub unsafe fn completion_shared(&mut self) -> CompletionQueue<'_> {
         self.cq.borrow_shared()
+    }
+}
+
+impl<'a> Drop for IoRing<'a> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            win_ring_queue_exit(self.info.0);
+        }
     }
 }

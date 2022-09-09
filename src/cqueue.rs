@@ -1,12 +1,11 @@
-use std::{fmt, io, sync::atomic};
+use std::{fmt, io, mem::MaybeUninit, sync::atomic};
 
 use crate::windows::{
-    win_ring, win_ring_cqe_get_data64, win_ring_cqe_iter, win_ring_submit_and_wait,
-    _NT_IORING_COMPLETION_QUEUE, _NT_IORING_CQE, _NT_IORING_INFO,
+    win_ring, win_ring_cq_clear, win_ring_cqe_get_data64, win_ring_cqe_iter,
+    win_ring_submit_and_wait, _NT_IORING_COMPLETION_QUEUE, _NT_IORING_CQE,
 };
 
 pub(crate) struct Inner {
-    ring_mask: u32,
     cqes: *mut _NT_IORING_COMPLETION_QUEUE,
     pub(crate) info: *mut win_ring,
 }
@@ -44,20 +43,15 @@ impl Inner {
                 .unwrap()
                 .Tail,
         ));
-        let ring_mask = (*p).info.CompletionQueueRingMask;
         let cqes = (*p).info.__bindgen_anon_2.CompletionQueue;
-        Self {
-            ring_mask,
-            cqes,
-            info: p,
-        }
+        Self { cqes, info: p }
     }
 
     #[inline]
-    pub(crate) unsafe fn borrow_shared(&self) -> CompletionQueue<'_> {
+    pub(crate) unsafe fn borrow_shared(&mut self) -> CompletionQueue<'_> {
         CompletionQueue {
-            head: self.cqes.as_ref().unwrap().Head,
-            tail: self.cqes.as_ref().unwrap().Tail,
+            head: (*(*self.info).info.__bindgen_anon_2.CompletionQueue).Head,
+            tail: (*(*self.info).info.__bindgen_anon_2.CompletionQueue).Tail,
             queue: (self as *const Self as *mut Self).as_mut().unwrap(),
         }
     }
@@ -69,6 +63,9 @@ impl Inner {
 }
 
 impl CompletionQueue<'_> {
+    pub fn should_drop(&mut self) -> bool {
+        self.head != self.tail
+    }
     /// Synchronize this type with the real completion queue.
     ///
     /// This will flush any entries consumed in this iterator and will make available new entries
@@ -101,29 +98,23 @@ impl CompletionQueue<'_> {
         self.len() == self.capacity()
     }
 
-    #[cfg(feature = "unstable")]
     #[inline]
     pub fn fill<'a>(&mut self, entries: &'a mut [MaybeUninit<Entry>]) -> &'a mut [Entry] {
         let len = std::cmp::min(self.len(), entries.len());
 
         for entry in &mut entries[..len] {
-            *entry = MaybeUninit::new(Entry(unsafe {
-                *self
-                    .queue
-                    .cqes
-                    .add((self.head & self.queue.ring_mask) as usize)
-            }));
+            *entry = MaybeUninit::new(self.next().unwrap());
             self.head = self.head.wrapping_add(1);
         }
 
         unsafe { std::slice::from_raw_parts_mut(entries as *mut _ as *mut Entry, len) }
     }
+
     unsafe fn clear_cqes(ring: *mut win_ring, string: &str) -> io::Result<()> {
         win_ring_submit_and_wait(ring, u32::MAX);
         for i in (*(*ring).info.__bindgen_anon_2.CompletionQueue).Head
             ..(*(*ring).info.__bindgen_anon_2.CompletionQueue).Tail
         {
-            dbg!(i);
             let cqe = win_ring_cqe_iter(ring, i);
             dbg!(
                 (*cqe).__bindgen_anon_1.ResultCode,
@@ -132,6 +123,7 @@ impl CompletionQueue<'_> {
                 string
             );
         }
+        win_ring_cq_clear(ring);
         Ok(())
     }
 }
@@ -140,7 +132,9 @@ impl Drop for CompletionQueue<'_> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            Self::clear_cqes(self.queue.info, "drop cqe");
+            if self.should_drop() {
+                Self::clear_cqes(self.queue.info, "drop cqe").unwrap();
+            }
         }
     }
 }
@@ -150,8 +144,7 @@ impl Iterator for CompletionQueue<'_> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        // self.sync();
-        self.head += 1;
+        dbg!(self.head);
         Some(Entry(unsafe {
             win_ring_cqe_iter(self.queue.info, self.head)
         }))

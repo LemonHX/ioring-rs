@@ -74,6 +74,10 @@ fn main() {
         "cargo:rustc-link-search=native={}/build/Debug",
         winring.display()
     );
+    println!(
+        "cargo:rustc-link-search=native={}/build/Release",
+        winring.display()
+    );
     println!("cargo:rustc-link-lib=dylib=winring");
 
     println!("cargo:rustc-link-lib=dylib=ntdll");

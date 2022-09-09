@@ -6042,6 +6042,9 @@ extern "C" {
     pub fn win_ring_queue_init(entries: u32, ring: *mut win_ring) -> HRESULT;
 }
 extern "C" {
+    pub fn win_ring_queue_init_ref(entries: u32) -> *mut win_ring;
+}
+extern "C" {
     pub fn win_ring_queue_exit(ring: *mut win_ring) -> HRESULT;
 }
 extern "C" {

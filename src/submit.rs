@@ -13,7 +13,7 @@ const BS: usize = 32 * 1024;
 
 pub struct Submitter<'a> {
     pub(crate) fd: &'a RawHandle,
-    pub(crate) info: &'a Info,
+    pub(crate) info: &'a Info<'a>,
     pub(crate) sq_head: *const atomic::AtomicU32,
     pub(crate) sq_tail: *const atomic::AtomicU32,
     pub(crate) sq_flags: *const atomic::AtomicI32,

@@ -35,6 +35,22 @@ HRESULT win_ring_queue_init(_In_ uint32_t entries,
   return HRESULT_FROM_NT(status);
 };
 
+struct win_ring *win_ring_queue_init_ref(_In_ uint32_t entries) {
+  struct win_ring *ring = ((struct win_ring *)malloc(sizeof(struct win_ring)));
+  NT_IORING_STRUCTV1 ioringStruct = {
+      .IoRingVersion = IORING_VERSION_3, // Requires Win11 22H2
+      .SubmissionQueueSize = entries,
+      .CompletionQueueSize = entries * 2,
+      .Flags = {
+          .Required = NT_IORING_CREATE_REQUIRED_FLAG_NONE,
+          .Advisory = NT_IORING_CREATE_ADVISORY_FLAG_NONE,
+      }};
+  NTSTATUS status =
+      NtCreateIoRing(&ring->handle, sizeof(ioringStruct), &ioringStruct,
+                     sizeof(ring->info), &ring->info);
+  return ring;
+};
+
 HRESULT win_ring_queue_exit(_In_ _Post_ptr_invalid_ win_ring *ring) {
   NTSTATUS status = NtClose(ring->handle);
   return HRESULT_FROM_NT(status);

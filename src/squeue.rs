@@ -2,9 +2,8 @@ use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
 use crate::windows::{
-    win_ring, win_ring_get_sqe, win_ring_sqe, win_ring_sqe_set_data64, win_ring_sqe_set_flags,
-    _NT_IORING_INFO, _NT_IORING_SQE, _NT_IORING_SQE_FLAGS, _NT_IORING_SQ_FLAGS,
-    _NT_IORING_SUBMISSION_QUEUE,
+    win_ring, win_ring_get_sqe, win_ring_sqe_set_data64, win_ring_sqe_set_flags, _NT_IORING_SQE,
+    _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE,
 };
 
 pub struct SubmissionQueue<'a> {
@@ -115,7 +114,8 @@ impl SubmissionQueue<'_> {
     pub unsafe fn push(&mut self, Entry(entry): &Entry) -> Result<(), PushError> {
         self.sync();
         if !self.is_full() {
-            win_ring_get_sqe(self.queue.info);
+            // let sqe = win_ring_get_sqe(self.queue.info);
+            // *sqe = **entry;
             self.sync();
             Ok(())
         } else {
@@ -127,7 +127,7 @@ impl SubmissionQueue<'_> {
 impl Entry {
     /// Set the submission event's [flags](Flags).
     #[inline]
-    pub fn flags(mut self, flags: _NT_IORING_SQE_FLAGS) -> Entry {
+    pub fn flags(self, flags: _NT_IORING_SQE_FLAGS) -> Entry {
         unsafe {
             win_ring_sqe_set_flags(self.0, flags);
         }
@@ -137,7 +137,7 @@ impl Entry {
     /// Set the user data. This is an application-supplied value that will be passed straight
     /// through into the [completion queue entry](crate::cqueue::Entry::user_data).
     #[inline]
-    pub fn user_data(mut self, user_data: u64) -> Entry {
+    pub fn user_data(self, user_data: u64) -> Entry {
         unsafe {
             win_ring_sqe_set_data64(self.0, user_data);
         }
