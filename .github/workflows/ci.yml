@@ -45,3 +45,9 @@ jobs:
 
     - name: Run example readme
       run: cargo run --package ioring-rs --example readme --all-features 
+
+    - name: Run example tcp_echo
+      run: cargo run --package ioring-rs --example tcp_echo --all-features 
+
+    - name: Run example raw_api_read
+      run: cargo run --package ioring-rs --example raw_api_read --all-features 

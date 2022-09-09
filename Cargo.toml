@@ -5,6 +5,8 @@ name = "ioring-rs"
 version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+[build-dependencies]
+cmake = "0.1"
+# bindgen = "0.53.1"
 [dependencies]
 slab="0.4.7"
