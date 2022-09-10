@@ -6,24 +6,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check-fmt:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        profile: minimal
-        target: x86_64-pc-windows-gnu
-
-    - name: Run fmt checks
-      run: cargo fmt -- --check
-
   test-win:
-    runs-on: windows-latest
+    runs-on: self-hosted
     strategy:
       matrix:
         target:
@@ -31,12 +15,7 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-
-    - name: Set default target
-      run: |
-        rustup default nightly-${{ matrix.target }}
-        rustup component add clippy
-
+      
     - name: Run clippy
       run: cargo clippy
     
