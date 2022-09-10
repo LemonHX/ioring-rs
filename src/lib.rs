@@ -8,9 +8,9 @@ pub mod windows;
 
 use cqueue::CompletionQueue;
 use squeue::SubmissionQueue;
-use std::{io, os::windows::prelude::RawHandle};
+use std::io;
 use submit::Submitter;
-use windows::{win_ring, win_ring_queue_exit, win_ring_queue_init, win_ring_queue_init_ref};
+use windows::{win_ring, win_ring_queue_exit, win_ring_queue_init_ref};
 
 pub struct IoRing<'a> {
     sq: squeue::Inner,
@@ -75,7 +75,6 @@ impl<'a> IoRing<'a> {
                 info: &self.info,
                 sq_head: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Head as *const u32),
                 sq_tail: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Tail as *const u32),
-                sq_flags: std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Flags as *const i32),
             }
         }
     }
@@ -93,7 +92,6 @@ impl<'a> IoRing<'a> {
                 &self.info,
                 std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Head as *const _),
                 std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Tail as *const _),
-                std::mem::transmute(&self.sq.sqes.as_ref().unwrap().Flags as *const _),
             );
             (submit, self.sq.borrow(), self.cq.borrow())
         }

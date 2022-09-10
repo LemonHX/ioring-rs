@@ -1,5 +1,5 @@
 use ioring_rs::windows::{
-    win_ring, win_ring_cqe_iter, win_ring_get_sqe, win_ring_prep_read,
+    win_ring, win_ring_cq_clear, win_ring_cqe_iter, win_ring_get_sqe, win_ring_prep_read,
     win_ring_prep_register_buffers, win_ring_prep_register_files, win_ring_queue_exit,
     win_ring_queue_init, win_ring_sqe_set_data64, win_ring_submit_and_wait, IORING_BUFFER_INFO,
     IORING_REGISTERED_BUFFER, _NT_IORING_BUFFERREF, _NT_IORING_HANDLEREF,
@@ -24,6 +24,8 @@ unsafe fn clear_cqes(ring: *mut win_ring, string: &str) -> io::Result<()> {
             string
         );
     }
+    win_ring_cq_clear(ring);
+
     Ok(())
 }
 fn main() -> std::io::Result<()> {
@@ -34,14 +36,14 @@ fn main() -> std::io::Result<()> {
         win_ring_queue_init(32, &mut ring);
         let mut buf4normal = [0u8; 32];
         let mut buf4fixed = [0u8; 32];
-        let bufferInfo = IORING_BUFFER_INFO {
+        let buffer_info = IORING_BUFFER_INFO {
             Address: buf4fixed.as_mut_ptr() as *mut _,
             Length: 32,
         };
-        let mut ring_sqe = win_ring_get_sqe(&mut ring);
+        let ring_sqe = win_ring_get_sqe(&mut ring);
         win_ring_prep_register_buffers(
             ring_sqe,
-            &bufferInfo,
+            &buffer_info,
             1,
             std::mem::zeroed(),
             _NT_IORING_REG_FILES_REQ_FLAGS_NT_IORING_REG_FILES_REQ_FLAG_NONE,

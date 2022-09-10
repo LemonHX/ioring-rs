@@ -9,14 +9,11 @@ use crate::{
     Info,
 };
 
-const BS: usize = 32 * 1024;
-
 pub struct Submitter<'a> {
     pub(crate) fd: &'a RawHandle,
     pub(crate) info: &'a Info<'a>,
     pub(crate) sq_head: *const atomic::AtomicU32,
     pub(crate) sq_tail: *const atomic::AtomicU32,
-    pub(crate) sq_flags: *const atomic::AtomicI32,
 }
 
 impl<'a> Submitter<'a> {
@@ -25,14 +22,12 @@ impl<'a> Submitter<'a> {
         info: &'a Info,
         sq_head: *const atomic::AtomicU32,
         sq_tail: *const atomic::AtomicU32,
-        sq_flags: *const atomic::AtomicI32,
     ) -> Submitter<'a> {
         Submitter {
             fd,
             info,
             sq_head,
             sq_tail,
-            sq_flags,
         }
     }
     #[inline]

@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
 use crate::windows::{
-    win_ring, win_ring_get_sqe, win_ring_sqe_set_data64, win_ring_sqe_set_flags, _NT_IORING_SQE,
+    win_ring, win_ring_sqe_set_data64, win_ring_sqe_set_flags, _NT_IORING_SQE,
     _NT_IORING_SQE_FLAGS, _NT_IORING_SUBMISSION_QUEUE,
 };
 
@@ -111,7 +111,7 @@ impl SubmissionQueue<'_> {
     /// Developers must ensure that parameters of the [`Entry`] (such as buffer) are valid and will
     /// be valid for the entire duration of the operation, otherwise it may cause memory problems.
     #[inline]
-    pub unsafe fn push(&mut self, Entry(entry): &Entry) -> Result<(), PushError> {
+    pub unsafe fn push(&mut self, Entry(_entry): &Entry) -> Result<(), PushError> {
         self.sync();
         if !self.is_full() {
             // let sqe = win_ring_get_sqe(self.queue.info);
