@@ -6,11 +6,11 @@ pub mod opcode;
 pub mod submit;
 pub mod windows;
 
+use crate::windows::{win_ring, win_ring_peek_cqe, win_ring_queue_exit, win_ring_queue_init_ref};
 use cqueue::CompletionQueue;
 use squeue::SubmissionQueue;
 use std::io;
 use submit::Submitter;
-use windows::{win_ring, win_ring_queue_exit, win_ring_queue_init_ref};
 
 pub struct IoRing<'a> {
     sq: squeue::Inner,
@@ -129,6 +129,17 @@ impl<'a> IoRing<'a> {
     #[inline]
     pub unsafe fn completion_shared(&mut self) -> CompletionQueue<'_> {
         self.cq.borrow_shared()
+    }
+
+    /// New for win_ring_cqe.
+    #[inline]
+    pub unsafe fn peek_cqe(&mut self) -> Option<cqueue::Entry> {
+        let ring_cqe = win_ring_peek_cqe(self.info.0);
+        if ring_cqe.is_null() {
+            None
+        } else {
+            Some(cqueue::Entry(ring_cqe))
+        }
     }
 }
 

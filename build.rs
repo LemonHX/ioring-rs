@@ -68,7 +68,10 @@ fn main() {
     //         .unwrap()
     //         .write_to_file(outdir.join("windows.rs"))
     //         .unwrap();
-    let winring = Config::new("libwinring").build_target("ALL_BUILD").build();
+    let winring = Config::new("libwinring")
+        .generator("Visual Studio 17 2022")
+        .build_target("ALL_BUILD")
+        .build();
 
     println!(
         "cargo:rustc-link-search=native={}/build/Debug",

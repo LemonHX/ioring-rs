@@ -6,7 +6,7 @@ use ioring_rs::{opcode, IoRing};
 use std::{fs, io, os::windows::prelude::AsRawHandle};
 
 fn main() -> io::Result<()> {
-    let f = fs::File::open("test.txt")?;
+    let f = fs::File::open("README.md")?;
     let mut ring = IoRing::new(32)?;
     let mut buf = [0u8; 32];
     let commonopflags = _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_NONE;

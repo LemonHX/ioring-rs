@@ -6124,7 +6124,7 @@ extern "C" {
     pub fn win_ring_sq_space_left(ring: *const win_ring) -> ::std::os::raw::c_uint;
 }
 extern "C" {
-    pub fn win_ring_get_sqe(ring: *mut win_ring) -> *mut win_ring_sqe;
+    pub fn win_ring_get_sqe(ring: *const win_ring) -> *mut win_ring_sqe;
 }
 extern "C" {
     pub fn win_ring_submit_and_wait_timeout(

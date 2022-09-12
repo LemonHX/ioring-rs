@@ -1,13 +1,20 @@
 #![allow(clippy::uninit_assumed_init)]
-use std::{io, os::windows::prelude::RawHandle, sync::atomic};
+use std::{io, iter, os::windows::prelude::RawHandle, sync::atomic};
 
+use crate::cqueue::CompletionQueue;
+use crate::opcode;
+use crate::windows::{win_ring_get_sqe, win_ring_sqe};
 use crate::{
     windows::{
-        win_ring_sq_space_left, NtSubmitIoRing,
-        _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE, _NT_IORING_SQE,
+        win_ring_sq_space_left, NtSubmitIoRing, IORING_BUFFER_INFO,
+        _NT_IORING_CREATE_REQUIRED_FLAGS_NT_IORING_CREATE_REQUIRED_FLAG_NONE,
+        _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_NONE, _NT_IORING_REG_BUFFERS_FLAGS,
+        _NT_IORING_REG_FILES_FLAGS,
     },
     Info,
 };
+
+const BS: usize = 32 * 1024;
 
 pub struct Submitter<'a> {
     pub(crate) fd: &'a RawHandle,
@@ -67,26 +74,14 @@ impl<'a> Submitter<'a> {
         }
     }
     /// Get the sqe ring
-    pub fn get_sqe(&self) -> io::Result<_NT_IORING_SQE> {
+    pub fn get_sqe(&self) -> io::Result<*mut win_ring_sqe> {
         if !self.sq_space_left() > 0 {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 "No space left in sqe ring",
             ));
         }
-        let sqe;
-        unsafe {
-            let len = ((*(*self.info.0).info.__bindgen_anon_1.SubmissionQueue).Tail
-                & (*self.info.0).info.SubmissionQueueRingMask) as usize;
-
-            sqe = std::slice::from_raw_parts(
-                (*(*self.info.0).info.__bindgen_anon_1.SubmissionQueue)
-                    .Entries
-                    .as_mut_ptr(),
-                len + 1,
-            )[len];
-            (*(*self.info.0).info.__bindgen_anon_1.SubmissionQueue).Tail += 1;
-        }
+        let sqe = unsafe { win_ring_get_sqe(self.info.0) };
         Ok(sqe)
     }
     /// Get the buffer space left in the sqe ring
@@ -97,21 +92,97 @@ impl<'a> Submitter<'a> {
     /// Register in-memory user buffers for I/O with the kernel. You can use these buffers with the
     /// [`ReadFixed`](crate::opcode::ReadFixed) and [`WriteFixed`](crate::opcode::WriteFixed)
     /// operations.
-    pub fn register_buffers(&self, infd: &'a RawHandle, outfd: &'a RawHandle) -> io::Result<()> {
-        let _sqe = &self.get_sqe();
-        let _fds = [infd, outfd];
+    /// This function is replica of register_files_bufs()
+    pub fn register_files_bufs(&self, infd: RawHandle, outfd: RawHandle) -> io::Result<()> {
+        let _fds = vec![infd, outfd];
+        let _ = opcode::RegisterFiles::new(
+            self.info.0,
+            _fds.as_ptr() as _,
+            2,
+            _NT_IORING_REG_FILES_FLAGS {
+                Required: 0,
+                Advisory: 0,
+            },
+            _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_NONE,
+        );
+
+        static STATIC_BUFFER: [u8; BS] = [0u8; BS];
+
+        let buf_info = IORING_BUFFER_INFO {
+            Address: &STATIC_BUFFER as *const _ as _,
+            Length: BS as u32,
+        };
+
+        let _ = opcode::RegisterBuffers::new(
+            self.info.0,
+            &buf_info,
+            1,
+            _NT_IORING_REG_BUFFERS_FLAGS {
+                Required: 0,
+                Advisory: 0,
+            },
+            _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_NONE,
+        );
+        unsafe {
+            CompletionQueue::<'_>::clear_cqes(
+                self.info.0 as *const _ as *mut _,
+                "submit register_buffer",
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Register in-memory user buffers for I/O with the kernel. You can use these buffers with the
+    /// [`ReadFixed`](crate::opcode::ReadFixed) and [`WriteFixed`](crate::opcode::WriteFixed)
+    /// operations.
+    /// This function is replica of queue_read_write_pair()
+    pub fn register_read_write(&self, infd: RawHandle, outfd: RawHandle) -> io::Result<()> {
+        let _fds = vec![infd, outfd];
+        let _ = opcode::RegisterFiles::new(
+            self.info.0,
+            _fds.as_ptr() as _,
+            2,
+            _NT_IORING_REG_FILES_FLAGS {
+                Required: 0,
+                Advisory: 0,
+            },
+            _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_NONE,
+        );
+
+        static STATIC_BUFFER: [u8; BS] = [0u8; BS];
+
+        let buf_info = IORING_BUFFER_INFO {
+            Address: &STATIC_BUFFER as *const _ as _,
+            Length: BS as u32,
+        };
+
+        let _ = opcode::RegisterBuffers::new(
+            self.info.0,
+            &buf_info,
+            1,
+            _NT_IORING_REG_BUFFERS_FLAGS {
+                Required: 0,
+                Advisory: 0,
+            },
+            _NT_IORING_OP_FLAGS_NT_IORING_OP_FLAG_NONE,
+        );
+        unsafe {
+            CompletionQueue::<'_>::clear_cqes(
+                self.info.0 as *const _ as *mut _,
+                "submit register_buffer",
+            )?;
+        }
         todo!()
     }
 
-    /// Register files for I/O. You can use the registered files with
-    /// [`Fixed`](crate::types::Fixed).
-    ///
-    /// Each fd may be -1, in which case it is considered "sparse", and can be filled in later with
-    /// [`register_files_update`](Self::register_files_update).
-    ///
-    /// Note that this will wait for the ring to idle; it will only return once all active requests
-    /// are complete. Use [`register_files_update`](Self::register_files_update) to avoid this.
-    pub fn register_files(&self, _fds: &[RawHandle]) -> io::Result<()> {
-        todo!()
+    /// Register in-memory user buffers for I/O with the kernel. You can use these buffers with the
+    /// [`ReadFixed`](crate::opcode::ReadFixed) and [`WriteFixed`](crate::opcode::WriteFixed)
+    /// operations.
+    /// This function is replica of register_files_bufs()
+    pub fn copy_file(&self, infd: RawHandle, outfd: RawHandle, size: u64) -> io::Result<()> {
+        // let offset:u64;
+        // for (offset=0;offset+BS<=size;offset+=BS) {
+        for offset in (0..size - (BS as u64)).step_by(BS) {}
+        Ok(())
     }
 }

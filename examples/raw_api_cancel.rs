@@ -90,7 +90,10 @@ fn main() -> std::io::Result<()> {
         win_ring_submit(&mut ring);
 
         clear_cqes(&mut ring, "read")?;
-        thread_join_handle.join().unwrap();
+        thread_join_handle.join().map_err(|_| {
+            let description = format!("Failed to join write thread");
+            io::Error::new(io::ErrorKind::Other, description)
+        })?;
         win_ring_queue_exit(&mut ring);
         Ok(())
     }

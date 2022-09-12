@@ -110,7 +110,7 @@ impl CompletionQueue<'_> {
         unsafe { std::slice::from_raw_parts_mut(entries as *mut _ as *mut Entry, len) }
     }
 
-    unsafe fn clear_cqes(ring: *mut win_ring, string: &str) -> io::Result<()> {
+    pub unsafe fn clear_cqes(ring: *mut win_ring, string: &str) -> io::Result<()> {
         win_ring_submit_and_wait(ring, u32::MAX);
         for i in (*(*ring).info.__bindgen_anon_2.CompletionQueue).Head
             ..(*(*ring).info.__bindgen_anon_2.CompletionQueue).Tail

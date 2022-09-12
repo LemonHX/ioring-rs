@@ -6,10 +6,11 @@ use crate::{
     squeue::Entry,
     windows::{
         win_ring, win_ring_get_sqe, win_ring_prep_nop, win_ring_prep_read,
-        win_ring_prep_register_buffers, win_ring_prep_register_files, HANDLE, NT_IORING_BUFFERREF,
-        NT_IORING_HANDLEREF, _IORING_BUFFER_INFO, _IORING_OP_CODE_IORING_OP_NOP,
-        _IORING_OP_CODE_IORING_OP_READ, _IORING_OP_CODE_IORING_OP_REGISTER_FILES,
-        _NT_IORING_OP_FLAGS, _NT_IORING_REG_BUFFERS_FLAGS, _NT_IORING_REG_FILES_FLAGS,
+        win_ring_prep_register_buffers, win_ring_prep_register_files, win_ring_register_event,
+        HANDLE, NT_IORING_BUFFERREF, NT_IORING_HANDLEREF, _IORING_BUFFER_INFO,
+        _IORING_OP_CODE_IORING_OP_NOP, _IORING_OP_CODE_IORING_OP_READ,
+        _IORING_OP_CODE_IORING_OP_REGISTER_FILES, _NT_IORING_OP_FLAGS,
+        _NT_IORING_REG_BUFFERS_FLAGS, _NT_IORING_REG_FILES_FLAGS,
     },
 };
 
@@ -143,7 +144,7 @@ opcode!(
     /// [`Submitter::register_files_update`](crate::Submitter::register_files_update) which then
     /// works in an async fashion, like the rest of the io_uring commands.
     pub struct RegisterFiles {
-        ring:{*mut win_ring},
+        ring:{*const win_ring},
         handles :{ *const HANDLE},
         count:{u32},
         flags:{_NT_IORING_REG_FILES_FLAGS},
@@ -180,7 +181,7 @@ opcode!(
     /// [`Submitter::register_files_update`](crate::Submitter::register_files_update) which then
     /// works in an async fashion, like the rest of the io_uring commands.
     pub struct RegisterBuffers {
-        ring:{*mut win_ring},
+        ring:{*const win_ring},
         handles :{ *const _IORING_BUFFER_INFO },
         count:{u32},
         flags:{_NT_IORING_REG_BUFFERS_FLAGS},
@@ -207,6 +208,34 @@ opcode!(
                 common_op_flags
             );
 
+            Entry(sqe)
+         }
+    }
+);
+
+opcode!(
+    /// This command is an alternative to using
+    /// [`Submitter::register_files_update`](crate::Submitter::register_files_update) which then
+    /// works in an async fashion, like the rest of the io_uring commands.
+    pub struct RegisterEvents {
+        ring:{*mut win_ring},
+        handle :{ HANDLE }
+     ;;
+    }
+
+    pub const CODE = _IORING_OP_CODE_IORING_OP_REGISTER_FILES;
+
+    pub fn build(self) -> Entry {
+        let RegisterEvents {
+            ring,
+            handle
+         } = self;
+         unsafe {
+            let sqe = win_ring_get_sqe(ring);
+            win_ring_register_event(ring,
+                handle
+            );
+            win_ring_prep_nop(sqe);
             Entry(sqe)
          }
     }

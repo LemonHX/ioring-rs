@@ -11,3 +11,11 @@ cmake = "0.1"
 [dependencies]
 os_pipe = "1.0.1"
 slab = "0.4.7"
+
+[dev-dependencies]
+windows = { version = "0.39.0", features = ["Win32_Media_Audio", "Win32_Foundation", "Win32_System_Com", "Win32_Devices_Properties", "Win32_Media_KernelStreaming", "Win32_System_Com_StructuredStorage", "Win32_System_Ole", "Win32_System_Threading", "Win32_Security", "Win32_System_SystemServices", "Win32_System_WindowsProgramming", "Win32_Media_Multimedia", "Win32_UI_Shell_PropertiesSystem"]}
+criterion = "0.4.0"
+
+[[bench]]
+name = "bench"
+harness = false
