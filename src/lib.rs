@@ -12,26 +12,26 @@ use squeue::SubmissionQueue;
 use std::io;
 use submit::Submitter;
 
-pub struct IoRing<'a> {
+pub struct IoRing {
     sq: squeue::Inner,
     cq: cqueue::Inner,
-    pub info: Info<'a>,
+    pub info: Info,
 }
 
 /// The Info that were used to construct an [`IoRing`].
 // #[derive(Clone)]
-pub struct Info<'a>(pub &'a mut win_ring);
+pub struct Info(pub *mut win_ring);
 
-unsafe impl<'a> Send for IoRing<'a> {}
-unsafe impl<'a> Sync for IoRing<'a> {}
+unsafe impl Send for IoRing {}
+unsafe impl Sync for IoRing {}
 
-impl<'a> IoRing<'a> {
+impl IoRing {
     /// Create a new `IoRing` instance with default configuration parameters. See [`Builder`] to
     /// customize it further.
     ///
     /// The `entries` sets the size of queue,
     /// and its value should be the power of two.
-    pub fn new(entries: u32) -> std::io::Result<IoRing<'a>> {
+    pub fn new(entries: u32) -> std::io::Result<IoRing> {
         let ring = unsafe { win_ring_queue_init_ref(entries) };
         unsafe fn setup_queue(p: *mut win_ring) -> io::Result<(squeue::Inner, cqueue::Inner)> {
             let sq = squeue::Inner::new(p);
@@ -143,7 +143,7 @@ impl<'a> IoRing<'a> {
     }
 }
 
-impl<'a> Drop for IoRing<'a> {
+impl Drop for IoRing {
     #[inline]
     fn drop(&mut self) {
         unsafe {

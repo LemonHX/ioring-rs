@@ -240,3 +240,85 @@ opcode!(
          }
     }
 );
+
+opcode!(
+    /// Do not perform any I/O.
+    ///
+    /// This is useful for testing the performance of the io_uring implementation itself.
+    #[derive(Debug)]
+    pub struct Cancel {
+        ring:{*mut win_ring},
+        file:{NT_IORING_HANDLEREF},
+        buffer:{NT_IORING_BUFFERREF},
+        size_to_read:{u32},
+        file_offset:{u64},
+        common_op_flags:{_NT_IORING_OP_FLAGS}
+     ;;
+     }
+
+    pub const CODE = _IORING_OP_CODE_IORING_OP_READ;
+
+    pub fn build(self) -> Entry {
+        let Cancel {
+            ring,
+            file,
+            buffer,
+            size_to_read,
+            file_offset,
+            common_op_flags,
+        } = self;
+
+        unsafe {
+            let sqe = win_ring_get_sqe(ring);
+            win_ring_prep_read(sqe,
+                file,
+                buffer,
+                size_to_read,
+                file_offset,
+                common_op_flags
+            );
+            Entry(sqe)
+        }
+    }
+);
+
+opcode!(
+    /// Do not perform any I/O.
+    ///
+    /// This is useful for testing the performance of the io_uring implementation itself.
+    #[derive(Debug)]
+    pub struct Flush {
+        ring:{*mut win_ring},
+        file:{NT_IORING_HANDLEREF},
+        buffer:{NT_IORING_BUFFERREF},
+        size_to_read:{u32},
+        file_offset:{u64},
+        common_op_flags:{_NT_IORING_OP_FLAGS}
+     ;;
+     }
+
+    pub const CODE = _IORING_OP_CODE_IORING_OP_READ;
+
+    pub fn build(self) -> Entry {
+        let Flush {
+            ring,
+            file,
+            buffer,
+            size_to_read,
+            file_offset,
+            common_op_flags,
+        } = self;
+
+        unsafe {
+            let sqe = win_ring_get_sqe(ring);
+            win_ring_prep_read(sqe,
+                file,
+                buffer,
+                size_to_read,
+                file_offset,
+                common_op_flags
+            );
+            Entry(sqe)
+        }
+    }
+);

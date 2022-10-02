@@ -18,7 +18,7 @@ const BS: usize = 32 * 1024;
 
 pub struct Submitter<'a> {
     pub(crate) fd: &'a RawHandle,
-    pub(crate) info: &'a Info<'a>,
+    pub(crate) info: &'a Info,
     pub(crate) sq_head: *const atomic::AtomicU32,
     pub(crate) sq_tail: *const atomic::AtomicU32,
 }
@@ -135,7 +135,7 @@ impl<'a> Submitter<'a> {
     /// Register in-memory user buffers for I/O with the kernel. You can use these buffers with the
     /// [`ReadFixed`](crate::opcode::ReadFixed) and [`WriteFixed`](crate::opcode::WriteFixed)
     /// operations.
-    /// This function is replica of queue_read_write_pair()
+    /// This function is replica of register_files_bufs()
     pub fn register_read_write(&self, infd: RawHandle, outfd: RawHandle) -> io::Result<()> {
         let _fds = vec![infd, outfd];
         let _ = opcode::RegisterFiles::new(
@@ -176,13 +176,30 @@ impl<'a> Submitter<'a> {
     }
 
     /// Register in-memory user buffers for I/O with the kernel. You can use these buffers with the
-    /// [`ReadFixed`](crate::opcode::ReadFixed) and [`WriteFixed`](crate::opcode::WriteFixed)
-    /// operations.
-    /// This function is replica of register_files_bufs()
-    pub fn copy_file(&self, infd: RawHandle, outfd: RawHandle, size: u64) -> io::Result<()> {
-        // let offset:u64;
-        // for (offset=0;offset+BS<=size;offset+=BS) {
-        for offset in (0..size - (BS as u64)).step_by(BS) {}
+    /// This function is replica of queue_read_write_pair()
+    pub fn queue_read_write_pair(&self, offset: u64, size: usize) -> io::Result<()> {
+        let sqe = self.get_sqe()?;
+        todo!()
+    }
+
+    /// Copy the file of series of infd to outfd
+    /// This function is replica of copy_file()
+    pub fn copy_file(&self, size: u64) -> io::Result<()> {
+        for offset in (0..size - (BS as u64)).step_by(BS) {
+            unsafe {
+                self.queue_read_write_pair(offset, BS)?;
+                if self.sq_space_left() < 2 {
+                    CompletionQueue::clear_cqes(self.info.0, "read_write")?;
+                }
+            }
+        }
+        let offset: u64 = size - size % BS as u64;
+        if offset != size {
+            self.queue_read_write_pair(offset, (size - offset) as usize)?;
+            unsafe {
+                CompletionQueue::clear_cqes(self.info.0, "read_write")?;
+            }
+        }
         Ok(())
     }
 }
